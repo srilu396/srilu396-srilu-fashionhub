@@ -1,0 +1,44 @@
+{
+  "name": "srilu-fashionhub-frontend",
+  "version": "1.0.0",
+  "description": "Luxury Fashion E-commerce Frontend - SriluFashionHub",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "dependencies": {
+    "@reduxjs/toolkit": "^2.11.0",
+    "framer-motion": "^10.16.4",
+    "lucide-react": "^0.555.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-redux": "^9.2.0",
+    "react-router-dom": "^6.8.0",
+    "react-scripts": "5.0.1",
+    "web-vitals": "^2.1.4"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "keywords": [
+    "fashion",
+    "ecommerce",
+    "luxury",
+    "react",
+    "women-fashion"
+  ],
+  "author": "SriluFashionHub Team",
+  "license": "MIT"
+}
