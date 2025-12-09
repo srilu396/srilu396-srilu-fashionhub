@@ -117,6 +117,17 @@ function broadcastCustomerActivity(activity) {
   });
 }
 
+
+// Serve static files from React frontend
+app.use(express.static(path.join(__dirname, 'frontend/build')));
+
+// Catch-all route to serve index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'));
+});
+
+
+
 // ===== Middleware for Customer Activity =====
 app.use((req, res, next) => {
   const originalSend = res.send;
