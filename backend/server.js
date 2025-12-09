@@ -1,36 +1,37 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const path = require('path');
 const http = require('http'); 
 const WebSocket = require('ws'); 
 const adminRoutes = require('./routes/admin');
-
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-
-
-// Create HTTP server
-const server = http.createServer(app); // CHANGE THIS LINE
-
-// Create WebSocket server
-const wss = new WebSocket.Server({ 
-  server: server, // Use the same server
-  path: '/ws' // WebSocket endpoint
+// ===== Home Route =====
+app.get("/", (req, res) => {
+  res.send("Srilu FashionHub Backend is Running Successfully!");
 });
 
-// Middleware
+// ===== Create HTTP server =====
+const server = http.createServer(app);
+
+// ===== WebSocket server =====
+const wss = new WebSocket.Server({ 
+  server: server,
+  path: '/ws'
+});
+
+// ===== Middleware =====
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-//admin Customer Management
+// ===== Admin Routes =====
 app.use('/api/admin', adminRoutes);
 
-// Connect to MongoDB with better error handling
+// ===== MongoDB Connection =====
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -40,11 +41,9 @@ mongoose.connect(process.env.MONGODB_URI, {
 .then(() => console.log('✅ Connected to MongoDB Database: srilufashionhub'))
 .catch(err => {
   console.error('❌ MongoDB connection error:', err);
-  console.log('💡 Please make sure MongoDB is running on your system');
-  console.log('💡 Run: mongod (or) sudo systemctl start mongod');
 });
 
-// Add connection event listeners
+// Event listeners
 mongoose.connection.on('connected', () => {
   console.log('📊 MongoDB connection established');
 });
@@ -57,12 +56,9 @@ mongoose.connection.on('disconnected', () => {
   console.log('⚠️ MongoDB connection disconnected');
 });
 
-// ==================== WEBSOCKET SETUP ====================
-
-// Store connected clients
+// ===== WebSocket Setup =====
 const connectedClients = new Map();
 
-// WebSocket connection handler
 wss.on('connection', (ws, req) => {
   const clientId = Date.now() + Math.random().toString(36).substr(2, 9);
   connectedClients.set(clientId, ws);
@@ -70,7 +66,6 @@ wss.on('connection', (ws, req) => {
   console.log(`🔌 WebSocket Client connected: ${clientId}`);
   console.log(`📡 Total connected clients: ${connectedClients.size}`);
 
-  // Send welcome message
   ws.send(JSON.stringify({
     type: 'welcome',
     message: 'Connected to SriluFashionHub Live Tracking',
@@ -78,12 +73,9 @@ wss.on('connection', (ws, req) => {
     timestamp: new Date().toISOString()
   }));
 
-  // Handle incoming messages
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
-      
-      // Handle ping/pong for connection keep-alive
       if (data.type === 'ping') {
         ws.send(JSON.stringify({
           type: 'pong',
@@ -95,29 +87,25 @@ wss.on('connection', (ws, req) => {
     }
   });
 
-  // Handle client disconnection
   ws.on('close', () => {
     connectedClients.delete(clientId);
     console.log(`🔌 WebSocket Client disconnected: ${clientId}`);
   });
 
-  // Handle errors
   ws.on('error', (error) => {
     console.error(`❌ WebSocket error for client ${clientId}:`, error);
     connectedClients.delete(clientId);
   });
 });
 
-// Function to broadcast activity to all connected clients
+// ===== Broadcast Function =====
 function broadcastCustomerActivity(activity) {
-  const data = {
+  const message = JSON.stringify({
     type: 'customer_activity',
     payload: activity,
     timestamp: new Date().toISOString()
-  };
-  
-  const message = JSON.stringify(data);
-  
+  });
+
   connectedClients.forEach((client, clientId) => {
     if (client.readyState === WebSocket.OPEN) {
       try {
@@ -129,43 +117,30 @@ function broadcastCustomerActivity(activity) {
   });
 }
 
-// Middleware to intercept customer activities and broadcast them
+// ===== Middleware for Customer Activity =====
 app.use((req, res, next) => {
   const originalSend = res.send;
-  
+
   res.send = function(data) {
-    // Try to parse the response data
     let parsedData;
-    try {
-      parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-    } catch {
-      parsedData = data;
-    }
-    
-    // Check if this is a customer activity that should be broadcasted
+    try { parsedData = typeof data === 'string' ? JSON.parse(data) : data; } 
+    catch { parsedData = data; }
+
     if (shouldBroadcastActivity(req, parsedData)) {
       const activity = createActivityFromRequest(req, parsedData);
       if (activity) {
-        // Broadcast after a short delay to not block response
-        setTimeout(() => {
-          broadcastCustomerActivity(activity);
-        }, 100);
+        setTimeout(() => broadcastCustomerActivity(activity), 100);
       }
     }
-    
-    // Call original send function
+
     originalSend.call(this, data);
   };
-  
+
   next();
 });
 
-// Helper function to determine if an activity should be broadcasted
+// ===== Helper Functions =====
 function shouldBroadcastActivity(req, responseData) {
-  const path = req.path;
-  const method = req.method;
-  
-  // Broadcast activities from these endpoints
   const broadcastPaths = [
     '/api/users/cart',
     '/api/users/wishlist',
@@ -173,36 +148,26 @@ function shouldBroadcastActivity(req, responseData) {
     '/api/users/login',
     '/api/customers'
   ];
-  
-  // Only broadcast successful POST, PUT, DELETE requests
-  if (!['POST', 'PUT', 'DELETE'].includes(method)) return false;
-  
-  // Check if path matches any broadcast path
-  return broadcastPaths.some(broadcastPath => path.includes(broadcastPath));
+
+  return ['POST','PUT','DELETE'].includes(req.method) &&
+         broadcastPaths.some(path => req.path.includes(path));
 }
 
-// Helper function to create activity object from request
 function createActivityFromRequest(req, responseData) {
   const path = req.path;
   const method = req.method;
-  
-  // Extract user info from request (adjust based on your auth middleware)
-  const userId = req.user?._id || req.body.userId || 
-                (responseData && (responseData.userId || responseData._id));
-  
-  const userName = req.user?.firstName || req.body.firstName || 
-                  req.body.username || 'Unknown User';
+  const userId = req.user?._id || req.body.userId || (responseData && (responseData.userId || responseData._id));
+  const userName = req.user?.firstName || req.body.firstName || req.body.username || 'Unknown User';
   
   const activity = {
     type: 'unknown',
-    userId: userId,
-    userName: userName,
+    userId,
+    userName,
     timestamp: new Date().toISOString(),
-    method: method,
-    path: path
+    method,
+    path
   };
-  
-  // Determine activity type based on route
+
   if (path.includes('/cart')) {
     if (method === 'POST') activity.type = 'cart_updated';
     else if (method === 'DELETE') activity.type = 'cart_item_removed';
@@ -212,19 +177,10 @@ function createActivityFromRequest(req, responseData) {
     if (method === 'POST') activity.type = 'wishlist_added';
     else if (method === 'DELETE') activity.type = 'wishlist_removed';
   }
-  else if (path.includes('/orders')) {
-    if (method === 'POST') activity.type = 'order_placed';
-  }
-  else if (path.includes('/login')) {
-    if (method === 'POST') activity.type = 'user_login';
-  }
-  else if (path.includes('/customers')) {
-    if (method === 'PUT' && path.includes('/status')) {
-      activity.type = 'customer_status_changed';
-    }
-  }
-  
-  // Add response data if available
+  else if (path.includes('/orders') && method === 'POST') activity.type = 'order_placed';
+  else if (path.includes('/login') && method === 'POST') activity.type = 'user_login';
+  else if (path.includes('/customers') && method === 'PUT' && path.includes('/status')) activity.type = 'customer_status_changed';
+
   if (responseData && typeof responseData === 'object') {
     activity.data = {
       success: responseData.success,
@@ -234,29 +190,25 @@ function createActivityFromRequest(req, responseData) {
       itemCount: responseData.quantity || responseData.items?.length
     };
   }
-  
+
   return activity;
 }
 
-// ==================== YOUR EXISTING ROUTES ====================
-
-// Routes
+// ===== API Routes =====
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/users', require('./routes/user'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/coupons', require('./routes/coupons'));
-app.use('/api/customers', require('./routes/customer')); // Your customer routes
+app.use('/api/customers', require('./routes/customer'));
 
-// Basic routes
 app.get('/api', (req, res) => {
   res.json({ 
     message: '👑 Welcome to SriluFashionHub API',
     version: '1.0.0',
-    websocket: `ws://localhost:${PORT}/ws` // Add WebSocket info
+    websocket: `ws://localhost:${PORT}/ws`
   });
 });
 
-// Health check route
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
@@ -266,68 +218,39 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// WebSocket test endpoint
 app.post('/api/test/broadcast', (req, res) => {
   const { type = 'test_activity', message = 'Test message', userId = 'test_user' } = req.body;
-  
   const testActivity = {
-    type: type,
-    userId: userId,
+    type,
+    userId,
     userName: 'Test User',
     timestamp: new Date().toISOString(),
-    data: {
-      message: message,
-      test: true
-    }
+    data: { message, test: true }
   };
-  
   broadcastCustomerActivity(testActivity);
-  
-  res.json({
-    success: true,
-    message: 'Test broadcast sent',
-    activity: testActivity,
-    clientsCount: connectedClients.size
-  });
+  res.json({ success: true, message: 'Test broadcast sent', activity: testActivity, clientsCount: connectedClients.size });
 });
 
-// Error handling middleware
+// ===== Error Handling =====
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ 
-    status: 'error', 
-    message: 'Something went wrong!' 
-  });
+  res.status(500).json({ status: 'error', message: 'Something went wrong!' });
 });
 
-// Serve static files from React app
-app.use(express.static(path.join(__dirname, '../frontend/build')));
-
-// The "catchall" handler
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
-});
-
-// Start server
-server.listen(PORT, () => { // CHANGE THIS LINE TOO
+// ===== Start Server =====
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 HTTP: http://localhost:${PORT}`);
   console.log(`🔌 WebSocket: ws://localhost:${PORT}/ws`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
 });
 
-// Handle graceful shutdown
+// ===== Graceful Shutdown =====
 process.on('SIGINT', () => {
   console.log('\n🛑 Shutting down server gracefully...');
-  
-  // Close all WebSocket connections
   wss.clients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.close(1000, 'Server shutting down');
-    }
+    if (client.readyState === WebSocket.OPEN) client.close(1000, 'Server shutting down');
   });
-  
-  // Close MongoDB connection
   mongoose.connection.close(false, () => {
     console.log('✅ MongoDB connection closed');
     process.exit(0);
