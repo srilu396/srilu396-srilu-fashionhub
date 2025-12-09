@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Test Page</h1>
+    
+    <button onclick="testGetProducts()">Test GET /products</button>
+    <button onclick="testCreateProduct()">Test POST /products</button>
+    <button onclick="testImport()">Test POST /import-from-api</button>
+    
+    <div id="result"></div>
+    
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        
+        async function testGetProducts() {
+            try {
+                const response = await fetch(`${API_BASE}/products`);
+                const data = await response.json();
+                document.getElementById('result').innerHTML = 
+                    `<h3>GET /products Response:</h3>
+                     <pre>${JSON.stringify(data, null, 2)}</pre>
+                     <p>Status: ${response.status}</p>
+                     <p>Is Array: ${Array.isArray(data)}</p>
+                     <p>Count: ${Array.isArray(data) ? data.length : 'N/A'}</p>`;
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    `<h3>Error:</h3><p>${error.message}</p>`;
+            }
+        }
+        
+        async function testCreateProduct() {
+            const testProduct = {
+                title: "Test Product",
+                description: "This is a test product",
+                price: 99.99,
+                category: "Test Category",
+                images: ["https://via.placeholder.com/500"],
+                inventory: 10
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/products`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testProduct)
+                });
+                const data = await response.json();
+                document.getElementById('result').innerHTML = 
+                    `<h3>POST /products Response:</h3>
+                     <pre>${JSON.stringify(data, null, 2)}</pre>
+                     <p>Status: ${response.status}</p>`;
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    `<h3>Error:</h3><p>${error.message}</p>`;
+            }
+        }
+        
+        async function testImport() {
+            try {
+                const response = await fetch(`${API_BASE}/products/import-from-api`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                document.getElementById('result').innerHTML = 
+                    `<h3>POST /import-from-api Response:</h3>
+                     <pre>${JSON.stringify(data, null, 2)}</pre>
+                     <p>Status: ${response.status}</p>`;
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    `<h3>Error:</h3><p>${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
