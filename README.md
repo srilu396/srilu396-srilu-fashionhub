@@ -4,11 +4,11 @@
 ![MERN Stack](https://img.shields.io/badge/Stack-MERN-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-![img alt](https://github.com/srilu396/srilu396-srilu-fashionhub/blob/e5f8e1fbf5d1a6de3c412ba5ccca70f0c3e26ebb/Screenshot%202025-12-11%20123429.png)
-![img alt](https://github.com/srilu396/srilu396-srilu-fashionhub/blob/e5f8e1fbf5d1a6de3c412ba5ccca70f0c3e26ebb/Screenshot%202025-12-11%20123257.png)
-![img alt](https://github.com/srilu396/srilu396-srilu-fashionhub/blob/e5f8e1fbf5d1a6de3c412ba5ccca70f0c3e26ebb/Screenshot%202025-12-11%20123329.png)
-![img alt](https://github.com/srilu396/srilu396-srilu-fashionhub/blob/e5f8e1fbf5d1a6de3c412ba5ccca70f0c3e26ebb/Screenshot%202025-12-11%20123451.png)
-![img alt](https://github.com/srilu396/srilu396-srilu-fashionhub/blob/e5f8e1fbf5d1a6de3c412ba5ccca70f0c3e26ebb/Screenshot%202025-12-11%20123505.png)
+![img alt](https://github.com/srilu396/srilu396-srilu-fashionhub/blob/e5f8e1fbf5d1a6de3c412ba5ccca70f0c3e26ebb/Screenshot%202025-12-11%20123429.png)    ![img alt](https://github.com/srilu396/srilu396-srilu-fashionhub/blob/e5f8e1fbf5d1a6de3c412ba5ccca70f0c3e26ebb/Screenshot%202025-12-11%20123257.png)    ![img alt](https://github.com/srilu396/srilu396-srilu-fashionhub/blob/e5f8e1fbf5d1a6de3c412ba5ccca70f0c3e26ebb/Screenshot%202025-12-11%20123329.png)       ![img alt](https://github.com/srilu396/srilu396-srilu-fashionhub/blob/e5f8e1fbf5d1a6de3c412ba5ccca70f0c3e26ebb/Screenshot%202025-12-11%20123451.png)       ![img alt](https://github.com/srilu396/srilu396-srilu-fashionhub/blob/e5f8e1fbf5d1a6de3c412ba5ccca70f0c3e26ebb/Screenshot%202025-12-11%20123505.png)
+
+
+## 🌐 Live Demo: https://srilu-fashionhub-frontend.vercel.app/
+
 
 ## 📋 Table of Contents
 - [🌟 Project Overview](#-project-overview)
