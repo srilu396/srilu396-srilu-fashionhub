@@ -1,6 +1,13 @@
 # 🛍️ SriLu FashionHub - E-Commerce Platform
 
+https://img.shields.io/badge/Status-Active-success
+https://img.shields.io/badge/Stack-MERN-blue
+https://img.shields.io/badge/License-MIT-green
+https://img.shields.io/badge/Live-Demo-brightgreen
+
+
 <img width="1916" height="914" alt="image" src="https://github.com/user-attachments/assets/7b61b834-4d69-4e0f-94fd-aafef3644ae9" />
+"C:\Users\HP\OneDrive\Pictures\Screenshots\Screenshot 2025-12-11 123429.png"
 
 
 ## 🔗 Live Demo
