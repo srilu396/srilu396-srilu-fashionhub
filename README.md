@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 ## 🔗 Live Demo
-🌐 Live Website: srilu-fashionhub.vercel.app
+🌐 Live Website: [srilu-fashionhub.vercel.app](https://srilu-fashionhub-frontend.vercel.app/)
 
 ## 📋 Table of Contents
 - [🌟 Project Overview](#-project-overview)
@@ -87,7 +87,7 @@ SriLu FashionHub is a full-featured e-commerce platform built with the MERN stac
 
 ```
 srilu-fashionhub/
-├── 📂 backend/                                                                                               │   ├── 📂 middleware/                                                                                     │   │   ├── adminAuth.js     # 🔐 Admin authentication middleware
+├── 📂 backend/                                                                                │   ├── 📂 middleware/                                                                         │   │   ├── adminAuth.js     # 🔐 Admin authentication middleware
 │   │   └── auth.js          # 🔑 User authentication middleware
 │   ├── 📂 models/
 │   │   ├── Order.js         # 📦 Order schema
