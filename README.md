@@ -336,5 +336,3 @@ REACT_APP_GOOGLE_ANALYTICS_ID=UA-XXXXXXXXX-X
 
 For support, email: 📧 support@srilufashionhub.com or create an issue in the repository.
 secure. 🛡️
-
-**🎉 Happy Coding! 🚀**
