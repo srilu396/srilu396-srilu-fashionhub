@@ -1,8 +1,7 @@
 # 🛍️ SriLu FashionHub - E-Commerce Platform
 
-![E-Commerce Platform](https://img.shields.io/badge/Status-Active-success)
-![MERN Stack](https://img.shields.io/badge/Stack-MERN-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
+<img width="1916" height="914" alt="image" src="https://github.com/user-attachments/assets/7b61b834-4d69-4e0f-94fd-aafef3644ae9" />
+
 
 ## 🔗 Live Demo
 🌐 Live Website: [srilu-fashionhub.vercel.app](https://srilu-fashionhub-frontend.vercel.app/)
