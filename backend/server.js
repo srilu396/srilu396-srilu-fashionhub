@@ -3,7 +3,6 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const http = require('http'); 
 const WebSocket = require('ws'); 
-const path = require('path'); // ADD THIS LINE
 const adminRoutes = require('./routes/admin');
 require('dotenv').config();
 
@@ -118,6 +117,17 @@ function broadcastCustomerActivity(activity) {
   });
 }
 
+
+// Serve static files from React frontend
+app.use(express.static(path.join(__dirname, 'frontend/build')));
+
+// Catch-all route to serve index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'));
+});
+
+
+
 // ===== Middleware for Customer Activity =====
 app.use((req, res, next) => {
   const originalSend = res.send;
@@ -230,15 +240,6 @@ app.post('/api/test/broadcast', (req, res) => {
   };
   broadcastCustomerActivity(testActivity);
   res.json({ success: true, message: 'Test broadcast sent', activity: testActivity, clientsCount: connectedClients.size });
-});
-
-// IMPORTANT: Move static file serving to the END, after all API routes
-// Serve static files from React frontend
-app.use(express.static(path.join(__dirname, 'frontend/build')));
-
-// Catch-all route to serve index.html
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'));
 });
 
 // ===== Error Handling =====
