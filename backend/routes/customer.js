@@ -282,52 +282,6 @@ router.get('/:customerId/activity', adminAuth, async (req, res) => {
   }
 });
 
-
-function broadcastActivity(activity) {
-  }
-
-router.put('/:id/status', async (req, res) => {
-  try {
-    const { status } = req.body;
-    
-    if (!['active', 'inactive'].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid status value'
-      });
-    }
-    
-    const customer = await User.findByIdAndUpdate(
-      req.params.id,
-      { 
-        status,
-        statusUpdatedAt: new Date() // Add timestamp
-      },
-      { new: true }
-    ).select('-password');
-    
-    if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: 'Customer not found'
-      });
-    }
-    
-    res.json({
-      success: true,
-      customer,
-      message: `Customer status updated to ${status}`
-    });
-    
-  } catch (error) {
-    console.error('Error updating status:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error updating status'
-    });
-  }
-});
-
 // Get customer's cart (admin only)
 router.get('/:id/cart', adminAuth, async (req, res) => {
   try {

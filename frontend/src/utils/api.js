@@ -1,14 +1,59 @@
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = `${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api`;
+
+// ===== OPTIMIZED FETCH LAYER (Deduplication + GET Caching + Abort Signals) =====
+const inFlightRequests = new Map();
+const responseCache = new Map();
+const CACHE_TTL_MS = 4000;
+
+export const clearApiCache = () => {
+  responseCache.clear();
+};
+
+export const fetchOptimized = async (url, options = {}) => {
+  const isGet = !options.method || options.method.toUpperCase() === 'GET';
+  const cacheKey = `${url}_${options.headers?.Authorization || ''}`;
+
+  if (isGet) {
+    const cached = responseCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return JSON.parse(JSON.stringify(cached.data));
+    }
+
+    if (inFlightRequests.has(cacheKey)) {
+      return inFlightRequests.get(cacheKey);
+    }
+  } else {
+    // Invalidate cache on mutations
+    responseCache.clear();
+  }
+
+  const promise = (async () => {
+    try {
+      const response = await fetch(url, options);
+      const data = await response.json();
+      if (isGet && response.ok) {
+        responseCache.set(cacheKey, { timestamp: Date.now(), data });
+      }
+      return data;
+    } catch (err) {
+      throw err;
+    } finally {
+      inFlightRequests.delete(cacheKey);
+    }
+  })();
+
+  if (isGet) {
+    inFlightRequests.set(cacheKey, promise);
+  }
+
+  return promise;
+};
 
 // ===== PRODUCT API ===== (MUST BE FIRST!)
 export const productAPI = {
   getAll: async () => {
     try {
-      console.log('📡 GET Products:', `${API_BASE}/products`);
-      const response = await fetch(`${API_BASE}/products`);
-      const data = await response.json();
-      console.log('✅ GET Products Success:', data);
-      return data;
+      return await fetchOptimized(`${API_BASE}/products`);
     } catch (error) {
       console.error('❌ GET Products Error:', error);
       throw error;
@@ -46,44 +91,6 @@ export const productAPI = {
       return data;
     } catch (error) {
       console.error('❌ Error creating product:', error);
-      throw error;
-    }
-  },
-
-  importFromAPI: async () => {
-    try {
-      console.log('🚀 Importing from external API...');
-      
-      // Get the admin token
-      const token = localStorage.getItem('adminToken') || localStorage.getItem('userToken');
-      
-      const response = await fetch(`${API_BASE}/products/import-from-api`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` })
-        },
-      });
-      
-      console.log('📦 Import Response Status:', response.status);
-      
-      if (!response.ok) {
-        let errorMessage;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || `HTTP error ${response.status}`;
-        } catch {
-          errorMessage = `HTTP error ${response.status}`;
-        }
-        throw new Error(errorMessage);
-      }
-      
-      const data = await response.json();
-      console.log('📦 Import Response Data:', data);
-      return data;
-      
-    } catch (error) {
-      console.error('❌ Import Error:', error);
       throw error;
     }
   },
@@ -613,6 +620,150 @@ export const adminSyncAPI = {
       },
       body: JSON.stringify({ customerId, order })
     }).then(res => res.json());
+  }
+};
+
+// ===== CATEGORY API =====
+export const categoryAPI = {
+  getAll: async (enabledOnly = false) => {
+    const res = await fetch(`${API_BASE}/categories${enabledOnly ? '?enabledOnly=true' : ''}`);
+    return res.json();
+  },
+  create: async (data) => {
+    const token = localStorage.getItem('adminToken');
+    const res = await fetch(`${API_BASE}/categories`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+  update: async (id, data) => {
+    const token = localStorage.getItem('adminToken');
+    const res = await fetch(`${API_BASE}/categories/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+  toggleStatus: async (id, isEnabled) => {
+    const token = localStorage.getItem('adminToken');
+    const res = await fetch(`${API_BASE}/categories/${id}/status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ isEnabled })
+    });
+    return res.json();
+  },
+  delete: async (id) => {
+    const token = localStorage.getItem('adminToken');
+    const res = await fetch(`${API_BASE}/categories/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return res.json();
+  }
+};
+
+// ===== VIP SUBSCRIBERS API =====
+export const vipAPI = {
+  subscribe: async (email) => {
+    const res = await fetch(`${API_BASE}/vip/subscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    return res.json();
+  },
+  getAll: async (search = '', status = '') => {
+    const token = localStorage.getItem('adminToken');
+    const res = await fetch(`${API_BASE}/vip?search=${encodeURIComponent(search)}&status=${encodeURIComponent(status)}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return res.json();
+  },
+  delete: async (id) => {
+    const token = localStorage.getItem('adminToken');
+    const res = await fetch(`${API_BASE}/vip/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return res.json();
+  }
+};
+
+// ===== LIVE CHAT API =====
+export const chatAPI = {
+  getMessages: async (customerId) => {
+    const res = await fetch(`${API_BASE}/chat/messages/${customerId}`);
+    return res.json();
+  },
+  sendMessage: async (data) => {
+    const res = await fetch(`${API_BASE}/chat/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+  getConversations: async () => {
+    const res = await fetch(`${API_BASE}/chat/conversations`);
+    return res.json();
+  },
+  markRead: async (customerId, reader = 'admin') => {
+    const res = await fetch(`${API_BASE}/chat/read/${customerId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reader })
+    });
+    return res.json();
+  }
+};
+
+// ===== NOTIFICATIONS API =====
+export const notificationAPI = {
+  getAll: async () => {
+    const token = localStorage.getItem('adminToken');
+    const res = await fetch(`${API_BASE}/notifications`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return res.json();
+  },
+  markAllRead: async () => {
+    const token = localStorage.getItem('adminToken');
+    const res = await fetch(`${API_BASE}/notifications/read-all`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return res.json();
+  },
+  markRead: async (id) => {
+    const token = localStorage.getItem('adminToken');
+    const res = await fetch(`${API_BASE}/notifications/${id}/read`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return res.json();
+  },
+  delete: async (id) => {
+    const token = localStorage.getItem('adminToken');
+    const res = await fetch(`${API_BASE}/notifications/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return res.json();
   }
 };
 

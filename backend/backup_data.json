@@ -1,0 +1,171 @@
+{
+  "timestamp": "2026-07-29T11:38:54.247Z",
+  "products": [
+    {
+      "subCategory": "General",
+      "stock": 10,
+      "_id": "6a69dd60da5bac713789cfac",
+      "name": "Designer High Heels",
+      "description": "Luxury designer high heels with crystal embellishments. Comfortable fit with premium leather.",
+      "price": 159.99,
+      "originalPrice": 199.99,
+      "discount": 20,
+      "category": "shoes",
+      "brand": "Chic Footwear",
+      "images": [
+        "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=500&h=500&fit=crop"
+      ],
+      "inventory": 30,
+      "rating": 4.5,
+      "isNew": true,
+      "featured": false,
+      "createdAt": "2026-07-29T11:00:48.327Z",
+      "updatedAt": "2026-07-29T11:00:48.329Z",
+      "__v": 0
+    },
+    {
+      "subCategory": "General",
+      "stock": 10,
+      "_id": "6a69dd60da5bac713789cfae",
+      "name": "Designer High Heels",
+      "description": "Luxury designer high heels with crystal embellishments. Comfortable fit with premium leather.",
+      "price": 159.99,
+      "originalPrice": 199.99,
+      "discount": 20,
+      "category": "shoes",
+      "brand": "Chic Footwear",
+      "images": [
+        "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=500&h=500&fit=crop"
+      ],
+      "inventory": 30,
+      "rating": 4.5,
+      "isNew": true,
+      "featured": false,
+      "createdAt": "2026-07-29T11:00:48.395Z",
+      "updatedAt": "2026-07-29T11:00:48.395Z",
+      "__v": 0
+    }
+  ],
+  "coupons": [
+    {
+      "_id": "6a68da17ce84d9205b60e39a",
+      "coupon_code": "WELCOME10",
+      "discount_type": "percentage",
+      "discount_value": 10,
+      "description": "10% Off Welcome Discount",
+      "applicable_categories": [],
+      "applicable_products": [],
+      "min_cart_value": 50,
+      "valid_from": "2026-07-28T16:34:31.239Z",
+      "valid_until": "2026-12-31T00:00:00.000Z",
+      "usage_limit_total": null,
+      "usage_limit_per_user": 1,
+      "used_count": 0,
+      "active_status": true,
+      "created_at": "2026-07-28T16:34:31.246Z",
+      "updated_at": "2026-07-28T16:34:31.246Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a68da17ce84d9205b60e39b",
+      "coupon_code": "LUXURY20",
+      "discount_type": "fixed",
+      "discount_value": 20,
+      "description": "$20 Off Luxury Collection",
+      "applicable_categories": [],
+      "applicable_products": [],
+      "min_cart_value": 100,
+      "valid_from": "2026-07-28T16:34:31.239Z",
+      "valid_until": "2026-12-31T00:00:00.000Z",
+      "usage_limit_total": null,
+      "usage_limit_per_user": 1,
+      "used_count": 0,
+      "active_status": true,
+      "created_at": "2026-07-28T16:34:31.246Z",
+      "updated_at": "2026-07-28T16:34:31.246Z",
+      "__v": 0
+    }
+  ],
+  "messages": [
+    {
+      "_id": "6a68da17ce84d9205b60e39d",
+      "name": "Sophia Loren",
+      "email": "sophia@example.com",
+      "subject": "Inquiry on Silk Gown",
+      "message": "Hello, I would like to know if the silk gown comes in navy blue size M.",
+      "createdAt": "2026-07-28T16:34:31.293Z",
+      "__v": 0
+    }
+  ],
+  "orders": [],
+  "users": [
+    {
+      "isMainAdmin": false,
+      "permissions": [],
+      "_id": "6a68d9e6d98069fd4e7df544",
+      "username": "admin",
+      "email": "admin@srilufashionhub.com",
+      "password": "$2a$12$tcfHxfmjGDj.d1x2Y2s4WOupYLXQGZgZNV.5udAXQYxoILd6ZYg4i",
+      "firstName": "Srilu",
+      "lastName": "Admin",
+      "role": "admin",
+      "status": "active",
+      "wishlist": [],
+      "cart": [],
+      "createdAt": "2026-07-28T16:33:42.713Z",
+      "updatedAt": "2026-07-28T16:33:42.713Z",
+      "__v": 0
+    },
+    {
+      "isMainAdmin": false,
+      "permissions": [],
+      "_id": "6a69dc12167f7cb2850620b2",
+      "username": "testuser",
+      "email": "testuser@example.com",
+      "password": "$2a$12$xgJOr5i/yJLZ4rt7eqEg.O2EfiKX0hxpIAQPlDBVxZ/BNCjo8vVl6",
+      "firstName": "Test",
+      "lastName": "User",
+      "role": "user",
+      "status": "active",
+      "wishlist": [],
+      "cart": [],
+      "createdAt": "2026-07-29T10:55:14.079Z",
+      "updatedAt": "2026-07-29T10:55:14.079Z",
+      "__v": 0
+    },
+    {
+      "isMainAdmin": false,
+      "permissions": [],
+      "_id": "6a69dc4059f521c693c901c3",
+      "username": "newuser123",
+      "email": "newuser123@example.com",
+      "password": "$2a$12$H.JKjQvRxllKdFOEOeezeeFJ7RnO4chGDt.CfFS4MF5DHoWr1cRsm",
+      "firstName": "New",
+      "lastName": "User",
+      "role": "user",
+      "status": "active",
+      "wishlist": [],
+      "cart": [],
+      "createdAt": "2026-07-29T10:56:00.626Z",
+      "updatedAt": "2026-07-29T10:56:00.626Z",
+      "__v": 0
+    },
+    {
+      "isMainAdmin": false,
+      "permissions": [],
+      "_id": "6a69de21da5bac713789cfca",
+      "username": "Nagulapalli Sri Vijaya Lakshmi",
+      "email": "alex@tasknova.com",
+      "password": "$2a$12$Lz1V05CbSuqOn78Q57GVfeq24w3NXLDDSIxu.4W9LmeVHbmiQKKFa",
+      "firstName": "Nagulapalli",
+      "lastName": "Lakshmi",
+      "role": "user",
+      "status": "active",
+      "wishlist": [],
+      "cart": [],
+      "createdAt": "2026-07-29T11:04:01.972Z",
+      "updatedAt": "2026-07-29T11:04:01.972Z",
+      "__v": 0
+    }
+  ]
+}

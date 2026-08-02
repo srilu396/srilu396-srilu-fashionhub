@@ -1,0 +1,243 @@
+/* Srilu FashionHub - Executive Admin Panel CSS Design Tokens & Styling */
+
+:root,
+[data-theme="dark"] {
+  /* Core Obsidian Dark & Champagne Gold Palette */
+  --admin-bg: #0A0A0D;
+  --admin-card-bg: #121217;
+  --admin-card-hover: #181820;
+  --admin-header-bg: rgba(10, 10, 13, 0.95);
+  --admin-sidebar-bg: #0E0E12;
+  
+  --admin-gold: #D4AF37;
+  --admin-gold-light: #F3E5AB;
+  --admin-gold-dark: #C5A028;
+  --admin-gold-muted: rgba(212, 175, 55, 0.12);
+  
+  --admin-border-subtle: rgba(255, 255, 255, 0.08);
+  --admin-border-gold: rgba(212, 175, 55, 0.22);
+  --admin-border-focus: rgba(212, 175, 55, 0.5);
+  
+  --admin-text-primary: #F9F8F6;
+  --admin-text-secondary: #A3A3B2;
+  --admin-text-muted: #6B6B76;
+  
+  --card-bg: #121217;
+  --header-bg: rgba(10, 10, 13, 0.95);
+  --th-bg: #0D0D11;
+  --text-primary: #F9F8F6;
+  --text-secondary: #A3A3B2;
+  --text-muted: #6B6B76;
+  --border-color: rgba(212, 175, 55, 0.2);
+  --input-bg: rgba(255, 255, 255, 0.04);
+  --badge-bg: rgba(255, 255, 255, 0.08);
+  --badge-border: rgba(255, 255, 255, 0.12);
+  --active-pill-bg: #D4AF37;
+  --bg-hover: rgba(212, 175, 55, 0.12);
+
+  --admin-success: #10B981;
+  --admin-success-bg: rgba(16, 185, 129, 0.12);
+  --admin-warning: #F59E0B;
+  --admin-warning-bg: rgba(245, 158, 11, 0.12);
+  --admin-danger: #EF4444;
+  --admin-danger-bg: rgba(239, 68, 68, 0.12);
+  --admin-info: #3B82F6;
+  --admin-info-bg: rgba(59, 130, 246, 0.12);
+  
+  /* Typography */
+  --font-serif: 'Playfair Display', 'Cormorant Garamond', serif;
+  --font-sans: 'Sora', 'Inter', system-ui, -apple-system, sans-serif;
+  
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 24px;
+  --radius-full: 9999px;
+  
+  /* Shadows & Glows */
+  --admin-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --admin-shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.6);
+  --admin-gold-glow: 0 0 20px rgba(212, 175, 55, 0.15);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 250ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="light"] {
+  --admin-bg: #FBF9F5;
+  --admin-card-bg: #FFFFFF;
+  --admin-card-hover: #F7F3EC;
+  --admin-header-bg: rgba(251, 249, 245, 0.95);
+  --admin-sidebar-bg: #FFFFFF;
+  
+  --admin-gold: #B8860B;
+  --admin-gold-light: #C5A059;
+  --admin-gold-dark: #8B6508;
+  --admin-gold-muted: rgba(184, 134, 11, 0.1);
+  
+  --admin-border-subtle: rgba(184, 134, 11, 0.15);
+  --admin-border-gold: rgba(184, 134, 11, 0.25);
+  --admin-border-focus: rgba(184, 134, 11, 0.5);
+  
+  --admin-text-primary: #111827;
+  --admin-text-secondary: #4B5563;
+  --admin-text-muted: #6B7280;
+  
+  --card-bg: #FFFFFF;
+  --header-bg: rgba(251, 249, 245, 0.95);
+  --th-bg: #F5EFE6;
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-muted: #6B7280;
+  --border-color: rgba(184, 134, 11, 0.22);
+  --input-bg: #F3EFEA;
+  --badge-bg: rgba(184, 134, 11, 0.08);
+  --badge-border: rgba(184, 134, 11, 0.22);
+  --active-pill-bg: #B8860B;
+  --bg-hover: rgba(184, 134, 11, 0.06);
+
+  --admin-shadow-sm: 0 4px 16px rgba(184, 134, 11, 0.06);
+  --admin-shadow-lg: 0 16px 32px rgba(15, 23, 42, 0.08);
+  --admin-gold-glow: 0 0 16px rgba(184, 134, 11, 0.12);
+}
+
+/* Base shell resets & Fixed viewport height layout */
+.admin-shell {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  background-color: var(--admin-bg);
+  color: var(--admin-text-primary);
+  font-family: var(--font-sans);
+  display: flex;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+
+.admin-main-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: var(--admin-bg);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.admin-content-pane {
+  flex: 1;
+  padding: 28px 36px;
+  max-width: 1600px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* Glass Card Containers */
+.admin-card {
+  background-color: var(--admin-card-bg);
+  border: 1px solid var(--admin-border-gold);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  box-shadow: var(--admin-shadow-sm);
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.admin-card:hover {
+  border-color: rgba(212, 175, 55, 0.4);
+  box-shadow: var(--admin-gold-glow);
+}
+
+/* Form Controls & Inputs */
+.admin-input, .admin-select, .admin-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--admin-border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--admin-text-primary);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  transition: all var(--transition-fast);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.admin-input:focus, .admin-select:focus, .admin-textarea:focus {
+  border-color: var(--admin-gold);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.15);
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.admin-select option {
+  background-color: var(--admin-card-bg);
+  color: var(--admin-text-primary);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--admin-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--admin-gold);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes tooltipFadeScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+
+.animate-fade-in {
+  animation: fadeIn var(--transition-normal) forwards;
+}
+
+@keyframes pulseSkeleton {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.skeleton-loader {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+  animation: pulseSkeleton 1.5s ease-in-out infinite;
+}
+
+/* Responsive queries */
+@media (max-width: 1024px) {
+  .admin-content-pane {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-content-pane {
+    padding: 16px;
+  }
+}

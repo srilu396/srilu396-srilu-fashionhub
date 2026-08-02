@@ -67,11 +67,23 @@ router.post('/register', async (req, res) => {
       role: savedUser.role
     };
 
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        id: savedUser._id, 
+        email: savedUser.email, 
+        role: savedUser.role 
+      },
+      process.env.JWT_SECRET || 'secretkey',
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
+
     console.log('✅ User registered successfully:', userResponse.id);
 
     res.status(201).json({
       success: true,
       message: 'User registered successfully!',
+      token,
       user: userResponse
     });
 
@@ -157,7 +169,7 @@ router.post('/login', async (req, res) => {
         role: user.role 
       }, 
       process.env.JWT_SECRET, 
-      { expiresIn: process.env.JWT_EXPIRES_IN }
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 
     // Remove password from response
@@ -741,3 +753,93 @@ router.put('/profile', authenticateUser, async (req, res) => {
     });
   }
 });
+
+// @desc    Forgot Password Request
+// @route   POST /api/users/forgot-password
+// @access  Public
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email address is required' });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'No account found with this email address' });
+    }
+
+    // Explicitly block Admin password reset
+    if (user.role === 'admin') {
+      return res.status(403).json({
+        success: false,
+        isAdmin: true,
+        message: 'Admin password cannot be reset through this system. Please contact the main administrator to change your password.'
+      });
+    }
+
+    // Generate 6-digit reset token valid for 15 minutes
+    const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
+    await user.save();
+
+    res.json({
+      success: true,
+      isAdmin: false,
+      message: 'Password reset code generated successfully.',
+      resetToken // Returned to UI for demonstration/verification
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ success: false, message: 'Server error processing password reset' });
+  }
+});
+
+// @desc    Reset Password with Token
+// @route   POST /api/users/reset-password
+// @access  Public
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, token, newPassword } = req.body;
+    if (!email || !token || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Email, token, and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+    }
+
+    const user = await User.findOne({
+      email: email.toLowerCase().trim(),
+      resetPasswordToken: token,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired password reset token' });
+    }
+
+    if (user.role === 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin password cannot be reset through this system. Please contact the main administrator.'
+      });
+    }
+
+    user.password = newPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully! You can now log in with your new password.'
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ success: false, message: 'Server error resetting password' });
+  }
+});
+
+module.exports = router;

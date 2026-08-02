@@ -14,19 +14,24 @@ import CartPage from './pages/user/CartPage';
 import WishlistPage from './pages/user/WishlistPage';
 import OrdersPage from './pages/user/OrdersPage';
 import UserCoupons from './pages/user/UserCoupons';
+import ProductDetailPage from './pages/user/ProductDetailPage';
 
 // Import all admin pages
-import AdminLogin from './pages/admin/AdminLogin';
+import UnifiedLogin from './pages/UnifiedLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import NewProduct from './pages/admin/NewProduct';
 import ProductsManagement from './pages/admin/ProductsManagement';
+import AdminProductDetails from './pages/admin/AdminProductDetails';
 import NewCoupon from './pages/admin/NewCoupon';
 import CouponsManagement from './pages/admin/CouponsManagement';
 import CustomersManagement from './pages/admin/CustomersManagement';
+import AdminManagement from './pages/admin/AdminManagement';
 import OrdersManagement from './pages/admin/OrdersManagement';
+import MessagesManagement from './pages/admin/MessagesManagement';
 import AnalyticsPage from './pages/admin/AnalyticsPage';
-import SettingsPage from './pages/admin/SettingsPage';
-
+import AdminProfile from './pages/admin/AdminProfile';
+import CategoryManagement from './pages/admin/CategoryManagement';
+import VipSubscribersManagement from './pages/admin/VipSubscribersManagement';
 
 import './App.css';
 
@@ -88,26 +93,13 @@ const AppContent = () => {
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<LandingPage />} />
+              <Route path="/product/:id" element={<ProductDetailPage />} />
+              <Route path="/user/product/:id" element={<ProductDetailPage />} />
               
-              {/* Admin Login */}
-              <Route 
-                path="/admin/login" 
-                element={
-                  <PublicRouteAdmin>
-                    <AdminLogin />
-                  </PublicRouteAdmin>
-                } 
-              />
-              
-              {/* User Login */}
-              <Route 
-                path="/user/login" 
-                element={
-                  <PublicRouteUser>
-                    <UserLogin />
-                  </PublicRouteUser>
-                } 
-              />
+              {/* Unified Login Routes (compatible with /login, /admin/login, /user/login) */}
+              <Route path="/login" element={<UnifiedLogin />} />
+              <Route path="/admin/login" element={<UnifiedLogin />} />
+              <Route path="/user/login" element={<UnifiedLogin />} />
               
               {/* Protected Admin Routes */}
               <Route 
@@ -131,6 +123,30 @@ const AppContent = () => {
                 element={
                   <ProtectedRoute>
                     <ProductsManagement />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/products/:productId" 
+                element={
+                  <ProtectedRoute>
+                    <AdminProductDetails />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/categories" 
+                element={
+                  <ProtectedRoute>
+                    <CategoryManagement />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/vip-subscribers" 
+                element={
+                  <ProtectedRoute>
+                    <VipSubscribersManagement />
                   </ProtectedRoute>
                 } 
               />
@@ -159,10 +175,26 @@ const AppContent = () => {
                 } 
               />
               <Route 
+                path="/admin/admins" 
+                element={
+                  <ProtectedRoute>
+                    <AdminManagement />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
                 path="/admin/orders" 
                 element={
                   <ProtectedRoute>
                     <OrdersManagement />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/messages" 
+                element={
+                  <ProtectedRoute>
+                    <MessagesManagement />
                   </ProtectedRoute>
                 } 
               />
@@ -175,10 +207,10 @@ const AppContent = () => {
                 } 
               />
               <Route 
-                path="/admin/settings" 
+                path="/admin/profile" 
                 element={
                   <ProtectedRoute>
-                    <SettingsPage />
+                    <AdminProfile />
                   </ProtectedRoute>
                 } 
               />

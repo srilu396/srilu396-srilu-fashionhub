@@ -41,7 +41,8 @@ const UserProfile = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/users/profile', {
+      const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+      const response = await fetch(`${API_BASE}/api/users/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -88,8 +89,9 @@ const UserProfile = () => {
     try {
       setSaving(true);
       const token = localStorage.getItem('userToken');
+      const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
       
-      const response = await fetch('http://localhost:5000/api/users/profile', {
+      const response = await fetch(`${API_BASE}/api/users/profile`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

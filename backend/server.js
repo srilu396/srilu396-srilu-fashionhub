@@ -3,6 +3,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const http = require('http'); 
 const WebSocket = require('ws'); 
+const path = require('path');
 const adminRoutes = require('./routes/admin');
 require('dotenv').config();
 
@@ -24,24 +25,85 @@ const wss = new WebSocket.Server({
 });
 
 // ===== Middleware =====
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ===== Admin Routes =====
+// ===== Admin & API Routes =====
 app.use('/api/admin', adminRoutes);
+app.use('/api/orders', require('./routes/orders'));
+app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/messages', require('./routes/messages'));
+app.use('/api/users', require('./routes/user'));
+app.use('/api/products', require('./routes/products'));
+app.use('/api/coupons', require('./routes/coupons'));
+app.use('/api/customers', require('./routes/customer'));
+app.use('/api/customer', require('./routes/customer'));
+app.use('/api/categories', require('./routes/categories'));
+app.use('/api/vip', require('./routes/vip'));
+app.use('/api/chat', require('./routes/chat'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // ===== MongoDB Connection =====
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 45000,
-})
-.then(() => console.log('✅ Connected to MongoDB Database: srilufashionhub'))
-.catch(err => {
-  console.error('❌ MongoDB connection error:', err);
-});
+const connectDB = async () => {
+  const primaryUri = process.env.MONGODB_URI;
+  const localUri = 'mongodb://127.0.0.1:27017/srilu_fashion_hub_db';
+  
+  try {
+    console.log('🔌 Connecting to primary MongoDB (Database: srilu_fashion_hub_db)...');
+    await mongoose.connect(primaryUri || localUri, {
+      dbName: 'srilu_fashion_hub_db',
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    });
+    console.log('✅ Connected to Primary MongoDB Database (srilu_fashion_hub_db)');
+  } catch (err) {
+    console.error('❌ Primary MongoDB connection error:', err.message);
+    if (primaryUri && primaryUri !== localUri) {
+      console.log('🔄 Falling back to local MongoDB (mongodb://127.0.0.1:27017/srilu_fashion_hub_db)...');
+      try {
+        await mongoose.connect(localUri, { 
+          dbName: 'srilu_fashion_hub_db',
+          serverSelectionTimeoutMS: 5000 
+        });
+        console.log('✅ Connected to Fallback Local MongoDB Database (srilu_fashion_hub_db)');
+      } catch (localErr) {
+        console.error('❌ Local MongoDB fallback connection failed:', localErr.message);
+      }
+    }
+  }
+  await seedDefaultAdmin();
+};
+
+async function seedDefaultAdmin() {
+  try {
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@srilufashionhub.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'SriluF@sh1on@2024!';
+    const User = require('./models/User');
+    let existingAdmin = await User.findOne({ email: adminEmail });
+    if (!existingAdmin) {
+      existingAdmin = new User({
+        username: 'admin',
+        email: adminEmail,
+        password: adminPassword,
+        firstName: 'Srilu',
+        lastName: 'Admin',
+        role: 'admin'
+      });
+      await existingAdmin.save();
+      console.log(`👑 Default Admin account seeded: ${adminEmail}`);
+    }
+  } catch (err) {
+    console.error('⚠️ Error seeding default admin:', err.message);
+  }
+}
+
+connectDB();
 
 // Event listeners
 mongoose.connection.on('connected', () => {
@@ -118,13 +180,7 @@ function broadcastCustomerActivity(activity) {
 }
 
 
-// Serve static files from React frontend
-app.use(express.static(path.join(__dirname, 'frontend/build')));
 
-// Catch-all route to serve index.html
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'));
-});
 
 
 
@@ -205,12 +261,7 @@ function createActivityFromRequest(req, responseData) {
   return activity;
 }
 
-// ===== API Routes =====
-app.use('/api/messages', require('./routes/messages'));
-app.use('/api/users', require('./routes/user'));
-app.use('/api/products', require('./routes/products'));
-app.use('/api/coupons', require('./routes/coupons'));
-app.use('/api/customers', require('./routes/customer'));
+// ===== Base API Routes =====
 
 app.get('/api', (req, res) => {
   res.json({ 
@@ -240,6 +291,15 @@ app.post('/api/test/broadcast', (req, res) => {
   };
   broadcastCustomerActivity(testActivity);
   res.json({ success: true, message: 'Test broadcast sent', activity: testActivity, clientsCount: connectedClients.size });
+});
+
+// ===== Serve Static Assets in Production =====
+const buildPath = path.join(__dirname, '../frontend/build');
+app.use(express.static(buildPath));
+
+// Catch-all route to serve React app index.html for frontend client-side routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(buildPath, 'index.html'));
 });
 
 // ===== Error Handling =====

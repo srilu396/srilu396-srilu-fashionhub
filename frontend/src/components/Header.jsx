@@ -1,339 +1,209 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { ShoppingBag, Search, User, Menu, X, Heart, Package, Shield } from 'lucide-react';
 
 const Header = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const location = useLocation();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    localStorage.removeItem('userToken');
-    localStorage.removeItem('user');
-    navigate('/user/login');
+  const { items: cartItems } = useSelector((state) => state.cart || { items: [] });
+  const { items: wishlistItems } = useSelector((state) => state.wishlist || { items: [] });
+
+  const userToken = localStorage.getItem('userToken');
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const adminToken = localStorage.getItem('adminToken');
+  const adminUser = JSON.parse(localStorage.getItem('adminUser') || 'null');
+
+  const itemCount = Array.isArray(cartItems) ? cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0) : 0;
+  const wishlistCount = Array.isArray(wishlistItems) ? wishlistItems.length : 0;
+
+  const handleProfileClick = () => {
+    if (userToken && user) {
+      navigate('/user/dashboard');
+    } else if (adminToken && adminUser) {
+      navigate('/admin/dashboard');
+    } else {
+      navigate('/login');
+    }
   };
 
-  // SFH Logo Component
-  const Logo = () => {
-    return (
-      <div className="logo-container">
-        <div className="logo-circle">
-          <span className="logo-text">SFH</span>
-        </div>
-        <style jsx>{`
-          .logo-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-          .logo-circle {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #D4AF37 0%, #F7E7CE 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 20px rgba(212, 175, 55, 0.6);
-          }
-          .logo-text {
-            color: #1C1C1C;
-            font-family: 'Playfair Display', serif;
-            font-weight: bold;
-            font-size: 1.2rem;
-          }
-        `}</style>
-      </div>
-    );
-  };
+  const navLinks = [
+    { to: '/', label: 'Home' },
+    { to: '/#collections', label: 'Shop', badge: 'Hot' },
+    { to: '/#about-us', label: 'About Us' },
+  ];
 
   return (
-    <header className="header">
-      <div className="header-content">
-        {/* Logo with SFH and Name */}
-        <Link to="/" className="brand-section">
-          <div className="logo-with-name">
-            <Logo />
-            <div className="brand-text">
-              <h1 className="brand-name">Srilu FashionHub</h1>
-              <div className="brand-tagline">Luxury Redefined</div>
-            </div>
-          </div>
+    <header style={{ position: 'sticky', top: 0, zIndex: 100 }}>
+      <nav className="navbar">
+        {/* Brand */}
+        <Link to="/" className="nav-brand">
+          <span className="nav-brand-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </span>
+          <span className="nav-brand-name">
+            Srilu<span>FashionHub</span>
+          </span>
         </Link>
 
-        <nav className={`luxury-nav ${isMenuOpen ? 'nav-open' : ''}`}>
-          <Link to="/user/dashboard" className="nav-item active">Home</Link>
-          <Link to="/user/products" className="nav-item">Products</Link>
-          <Link to="/user/categories" className="nav-item">Categories</Link>
-          <Link to="/user/new-arrivals" className="nav-item">New Arrivals</Link>
-        </nav>
+        {/* Desktop links */}
+        <ul className="nav-links">
+          {navLinks.map(({ to, label, badge }) => (
+            <li key={to}>
+              <Link
+                to={to}
+                className={`nav-link ${location.pathname === to ? 'active' : ''}`}
+              >
+                {label}
+                {badge && <span className="nav-badge">{badge}</span>}
+              </Link>
+            </li>
+          ))}
+          {adminToken && adminUser && (
+            <li>
+              <Link to="/admin/dashboard" className="nav-link" style={{ color: 'var(--gold)', fontWeight: '700' }}>
+                <Shield size={14} style={{ marginRight: '4px' }} /> Admin Panel
+              </Link>
+            </li>
+          )}
+        </ul>
 
-        <div className="user-actions">
-          <button className="nav-item search-btn">
-            <span className="icon">🔍</span>
-          </button>
-          
-          <Link to="/user/wishlist" className="nav-item wishlist-btn">
-            <span className="icon">❤️</span>
-          </Link>
-          
-          <Link to="/user/cart" className="nav-item cart-btn">
-            <span className="icon">🛒</span>
-          </Link>
-          
-          <div className="profile-dropdown">
-            <button 
-              className="nav-item profile-btn"
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
-            >
-              <span className="icon">👤</span>
-            </button>
-            
-            {isProfileOpen && (
-              <div className="dropdown-menu">
-                <Link to="/user/profile" className="dropdown-item">My Profile</Link>
-                <Link to="/user/orders" className="dropdown-item">My Orders</Link>
-                <button onClick={handleLogout} className="dropdown-item logout">
-                  Logout
-                </button>
-              </div>
-            )}
+        {/* Right side icons */}
+        <div className="nav-right">
+          {/* Search Bar */}
+          <div className="nav-search-wrap">
+            <input
+              className="nav-search-input"
+              placeholder="Search fashion..."
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+            />
+            <Search size={15} className="nav-search-icon" />
           </div>
 
-          <button 
-            className="mobile-menu-btn"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          <div className="nav-divider" />
+
+          {/* Wishlist */}
+          <Link to="/user/dashboard" onClick={(e) => { if (!userToken) { e.preventDefault(); navigate('/login'); } }} className="nav-icon-btn" aria-label="Wishlist">
+            <Heart size={17} className={wishlistCount > 0 ? 'fill-pink text-pink' : ''} />
+            {wishlistCount > 0 && (
+              <span className="nav-cart-badge">{wishlistCount}</span>
+            )}
+          </Link>
+
+          {/* Cart */}
+          <Link to="/user/cart" className="nav-icon-btn" aria-label="Cart">
+            <ShoppingBag size={17} />
+            {itemCount > 0 && (
+              <span className="nav-cart-badge">{itemCount}</span>
+            )}
+          </Link>
+
+          {/* Auth Action Buttons when logged out */}
+          {!userToken && !adminToken ? (
+            <div className="nav-auth-group" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '6px' }}>
+              <button
+                onClick={() => navigate('/login')}
+                style={{
+                  background: 'transparent',
+                  color: '#D4AF37',
+                  border: '1px solid rgba(212, 175, 55, 0.4)',
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  letterSpacing: '0.5px'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.borderColor = '#D4AF37'; e.currentTarget.style.background = 'rgba(212, 175, 55, 0.1)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.4)'; e.currentTarget.style.background = 'transparent'; }}
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => navigate('/login?tab=signup')}
+                style={{
+                  background: 'linear-gradient(135deg, #D4AF37, #C5A028)',
+                  color: '#0D0D0E',
+                  border: 'none',
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  letterSpacing: '0.5px',
+                  boxShadow: '0 2px 10px rgba(212, 175, 55, 0.25)'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(212, 175, 55, 0.4)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 10px rgba(212, 175, 55, 0.25)'; }}
+              >
+                Sign Up
+              </button>
+            </div>
+          ) : (
+            <button onClick={handleProfileClick} className="nav-icon-btn nav-profile-btn" aria-label="Account" title={user ? `${user.firstName}` : 'Account Dashboard'}>
+              <User size={17} />
+            </button>
+          )}
+
+          {/* User Orders Quick Button */}
+          {userToken && (
+            <button 
+              onClick={() => navigate('/user/dashboard')} 
+              className="nav-icon-btn" 
+              aria-label="Orders"
+              title="My Orders"
+            >
+              <Package size={17} />
+            </button>
+          )}
+
+          {/* Mobile Menu Toggle */}
+          <button
+            className="nav-mobile-toggle"
+            onClick={() => setIsOpen(!isOpen)}
+            aria-label="Toggle menu"
           >
-            <span className="bar"></span>
-            <span className="bar"></span>
-            <span className="bar"></span>
+            {isOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
+      </nav>
+
+      {/* Mobile Drawer Menu */}
+      <div className={`nav-mobile-menu ${isOpen ? 'open' : ''}`}>
+        {navLinks.map(({ to, label }) => (
+          <Link
+            key={to}
+            to={to}
+            className="nav-mobile-link"
+            onClick={() => setIsOpen(false)}
+          >
+            {label}
+          </Link>
+        ))}
+        {userToken ? (
+          <Link to="/user/dashboard" className="nav-mobile-link" onClick={() => setIsOpen(false)}>
+            My Dashboard
+          </Link>
+        ) : (
+          <Link to="/login" className="nav-mobile-link" onClick={() => setIsOpen(false)}>
+            Login / Register
+          </Link>
+        )}
+        {adminToken && (
+          <Link to="/admin/dashboard" className="nav-mobile-link" onClick={() => setIsOpen(false)}>
+            Admin Dashboard
+          </Link>
+        )}
       </div>
-
-      <style jsx>{`
-        .header {
-          background: rgba(28, 28, 28, 0.95);
-          backdrop-filter: blur(20px);
-          border-bottom: 3px solid #D4AF37;
-          padding: 1rem 2rem;
-          position: sticky;
-          top: 0;
-          z-index: 1000;
-        }
-
-        .header-content {
-          max-width: 1200px;
-          margin: 0 auto;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          flex-wrap: wrap;
-        }
-
-        /* Brand Section with Logo and Name */
-        .brand-section {
-          text-decoration: none;
-          display: flex;
-          align-items: center;
-        }
-
-        .logo-with-name {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .brand-text {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .brand-name {
-          font-size: 1.8rem;
-          font-weight: 700;
-          background: linear-gradient(45deg, #D4AF37, #F7E7CE, #D4AF37);
-          background-size: 200% 200%;
-          background-clip: text;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          animation: shimmer 3s ease-in-out infinite;
-          text-shadow: 0 0 30px rgba(212, 175, 55, 0.3);
-          font-family: 'Playfair Display', serif;
-          margin: 0;
-          line-height: 1;
-        }
-
-        .brand-tagline {
-          color: #F5F5F5;
-          font-size: 0.8rem;
-          font-style: italic;
-          letter-spacing: 1px;
-          text-transform: uppercase;
-          font-family: 'Cormorant Garamond', serif;
-          margin-top: 0.2rem;
-        }
-
-        @keyframes shimmer {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-
-        /* Luxury Navigation */
-        .luxury-nav {
-          display: flex;
-          gap: 1.5rem;
-          align-items: center;
-        }
-
-        .nav-item {
-          background: none;
-          border: none;
-          color: #E5DCC3;
-          font-size: 1rem;
-          cursor: pointer;
-          padding: 0.8rem 1.5rem;
-          border-radius: 25px;
-          transition: all 0.3s ease;
-          font-family: 'Cormorant Garamond', serif;
-          font-weight: 500;
-          text-decoration: none;
-          position: relative;
-        }
-
-        /* REMOVED CIRCLE ANIMATION */
-        .nav-item:hover {
-          background: rgba(212, 175, 55, 0.1);
-          color: #F7E7CE;
-          transform: translateY(-2px);
-        }
-
-        .nav-item.active {
-          background: rgba(212, 175, 55, 0.2);
-          color: #F7E7CE;
-          border: 1px solid #D4AF37;
-        }
-
-        .user-actions {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .profile-dropdown {
-          position: relative;
-        }
-
-        .dropdown-menu {
-          position: absolute;
-          top: 100%;
-          right: 0;
-          background: rgba(28, 28, 28, 0.95);
-          border: 1px solid rgba(212, 175, 55, 0.3);
-          border-radius: 10px;
-          padding: 0.5rem;
-          min-width: 150px;
-          margin-top: 0.5rem;
-          backdrop-filter: blur(10px);
-        }
-
-        .dropdown-item {
-          display: block;
-          width: 100%;
-          padding: 0.75rem 1rem;
-          color: #F5F5F5;
-          text-decoration: none;
-          border: none;
-          background: none;
-          text-align: left;
-          cursor: pointer;
-          transition: background 0.3s ease;
-          border-radius: 5px;
-          font-family: 'Cormorant Garamond', serif;
-        }
-
-        .dropdown-item:hover {
-          background: rgba(212, 175, 55, 0.1);
-        }
-
-        .dropdown-item.logout {
-          color: #ff4444;
-        }
-
-        .mobile-menu-btn {
-          display: none;
-          flex-direction: column;
-          background: none;
-          border: none;
-          cursor: pointer;
-          padding: 0.5rem;
-          gap: 4px;
-        }
-
-        .bar {
-          width: 25px;
-          height: 2px;
-          background: #F5F5F5;
-        }
-
-        @media (max-width: 768px) {
-          .mobile-menu-btn {
-            display: flex;
-          }
-
-          .luxury-nav {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: rgba(28, 28, 28, 0.95);
-            flex-direction: column;
-            padding: 1rem;
-            transform: translateY(-100%);
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(20px);
-          }
-
-          .nav-open {
-            transform: translateY(0);
-            opacity: 1;
-            visibility: visible;
-          }
-
-          .header-content {
-            flex-direction: column;
-            gap: 1rem;
-          }
-
-          .brand-name {
-            font-size: 1.5rem;
-          }
-
-          .logo-circle {
-            width: 40px;
-            height: 40px;
-          }
-
-          .logo-text {
-            font-size: 1rem;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .logo-with-name {
-            gap: 0.5rem;
-          }
-          
-          .brand-name {
-            font-size: 1.3rem;
-          }
-          
-          .brand-tagline {
-            font-size: 0.7rem;
-          }
-        }
-      `}</style>
     </header>
   );
 };

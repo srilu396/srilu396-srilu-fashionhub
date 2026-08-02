@@ -20,7 +20,9 @@ const adminAuth = (req, res, next) => {
       });
     }
 
-    req.user = decoded;
+    const userId = decoded._id || decoded.id;
+    req.user = { ...decoded, _id: userId, id: userId };
+    req.adminUser = { ...decoded, _id: userId, id: userId };
     next();
   } catch (error) {
     res.status(401).json({ 

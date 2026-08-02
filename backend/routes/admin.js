@@ -292,7 +292,7 @@ router.get('/settings', adminAuth, async (req, res) => {
           allowAdminAccess: true,
         },
         lastUpdated: new Date(),
-        updatedBy: req.adminUser._id,
+        updatedBy: req.adminUser?._id || req.user?._id || req.user?.id,
       });
     }
     
@@ -335,7 +335,7 @@ router.put('/settings', adminAuth, async (req, res) => {
     if (maintenance) settings.maintenance = { ...settings.maintenance, ...maintenance };
     
     settings.lastUpdated = new Date();
-    settings.updatedBy = req.adminUser._id;
+    settings.updatedBy = req.adminUser?._id || req.user?._id || req.user?.id;
     
     await settings.save();
     
@@ -466,7 +466,7 @@ SriluFashionHub Admin Team`,
           encryption: smtpConfig.encryption
         };
         settings.lastUpdated = new Date();
-        settings.updatedBy = req.adminUser._id;
+        settings.updatedBy = req.adminUser?._id || req.user?._id || req.user?.id;
         await settings.save();
       }
     }
@@ -505,7 +505,7 @@ router.post('/settings/export-data', adminAuth, async (req, res) => {
     
     const exportData = {
       exportedAt: new Date(),
-      exportedBy: req.adminUser._id,
+      exportedBy: req.adminUser?._id || req.user?._id || req.user?.id,
       data: {}
     };
     
@@ -642,7 +642,7 @@ router.post('/settings/factory-reset', adminAuth, async (req, res) => {
         allowAdminAccess: true,
       },
       lastUpdated: new Date(),
-      updatedBy: req.adminUser._id,
+      updatedBy: req.adminUser?._id || req.user?._id || req.user?.id,
     });
     
     res.json({
@@ -657,5 +657,148 @@ router.post('/settings/factory-reset', adminAuth, async (req, res) => {
   }
 });
 
+// ==================== MULTI-ADMIN MANAGEMENT ROUTES ====================
+
+// Get all admin users
+router.get('/admins', adminAuth, async (req, res) => {
+  try {
+    const admins = await User.find({ role: 'admin' })
+      .select('-password -__v')
+      .sort({ isMainAdmin: -1, createdAt: -1 });
+
+    res.json({
+      success: true,
+      admins
+    });
+  } catch (error) {
+    console.error('Fetch admins error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Create new admin
+router.post('/admins', adminAuth, async (req, res) => {
+  try {
+    const { username, email, password, firstName, lastName, permissions } = req.body;
+
+    if (!username || !email || !password || !firstName || !lastName) {
+      return res.status(400).json({
+        success: false,
+        message: 'All fields are required: username, email, password, firstName, lastName'
+      });
+    }
+
+    const existingUser = await User.findOne({
+      $or: [{ email: email.toLowerCase().trim() }, { username: username.trim() }]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'User already exists with this email or username'
+      });
+    }
+
+    const newAdmin = new User({
+      username: username.trim(),
+      email: email.toLowerCase().trim(),
+      password,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      role: 'admin',
+      isMainAdmin: false,
+      status: 'active',
+      permissions: permissions && Array.isArray(permissions) ? permissions : ['products', 'orders', 'customers', 'coupons', 'admins']
+    });
+
+    await newAdmin.save();
+
+    const adminResponse = {
+      id: newAdmin._id,
+      username: newAdmin.username,
+      email: newAdmin.email,
+      firstName: newAdmin.firstName,
+      lastName: newAdmin.lastName,
+      role: newAdmin.role,
+      isMainAdmin: newAdmin.isMainAdmin,
+      status: newAdmin.status,
+      permissions: newAdmin.permissions
+    };
+
+    res.status(201).json({
+      success: true,
+      message: 'Admin account created successfully',
+      admin: adminResponse
+    });
+  } catch (error) {
+    console.error('Create admin error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Toggle Admin Status (Activate/Deactivate)
+router.put('/admins/:id/status', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const targetAdmin = await User.findById(id);
+    if (!targetAdmin) {
+      return res.status(404).json({ success: false, message: 'Admin user not found' });
+    }
+
+    if (targetAdmin.isMainAdmin) {
+      return res.status(400).json({
+        success: false,
+        message: 'Main Administrator account cannot be deactivated.'
+      });
+    }
+
+    targetAdmin.status = status || (targetAdmin.status === 'active' ? 'inactive' : 'active');
+    await targetAdmin.save();
+
+    res.json({
+      success: true,
+      message: `Admin status updated to ${targetAdmin.status}`,
+      admin: {
+        id: targetAdmin._id,
+        status: targetAdmin.status
+      }
+    });
+  } catch (error) {
+    console.error('Update admin status error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete Admin
+router.delete('/admins/:id', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const targetAdmin = await User.findById(id);
+    if (!targetAdmin) {
+      return res.status(404).json({ success: false, message: 'Admin user not found' });
+    }
+
+    // HARDENED BACKEND SAFEGUARD FOR MAIN ADMIN
+    if (targetAdmin.isMainAdmin) {
+      return res.status(400).json({
+        success: false,
+        message: 'Main Administrator account cannot be deleted.'
+      });
+    }
+
+    await User.findByIdAndDelete(id);
+
+    res.json({
+      success: true,
+      message: 'Admin account deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete admin error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 module.exports = router;

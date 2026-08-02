@@ -1,20 +1,20 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api`;
 
-// Fetch ALL orders from backend (Admin only)
+// Fetch ALL orders from MongoDB backend (Admin only)
 export const fetchAllOrders = createAsyncThunk(
   'orders/fetchAllOrders',
   async (_, { rejectWithValue }) => {
     try {
       console.log('🔍 Fetching ALL orders from backend...');
       
-      const adminToken = localStorage.getItem('adminToken');
+      const adminToken = localStorage.getItem('adminToken') || localStorage.getItem('userToken');
       if (!adminToken) {
         throw new Error('Admin authorization required');
       }
       
-      const response = await fetch(`${API_BASE_URL}/customers/admin/orders`, {
+      const response = await fetch(`${API_BASE_URL}/orders/admin/all`, {
         headers: {
           'Authorization': `Bearer ${adminToken}`,
           'Content-Type': 'application/json'
@@ -22,7 +22,22 @@ export const fetchAllOrders = createAsyncThunk(
       });
       
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
+        // Fallback to /orders if admin/all is not accessible
+        const altResponse = await fetch(`${API_BASE_URL}/orders`, {
+          headers: {
+            'Authorization': `Bearer ${adminToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!altResponse.ok) {
+          throw new Error(`API Error: ${response.status}`);
+        }
+        const altData = await altResponse.json();
+        return {
+          orders: altData.orders || [],
+          count: altData.count || 0,
+          customerCount: new Set((altData.orders || []).map(o => o.user?._id || o.user)).size
+        };
       }
       
       const data = await response.json();
@@ -31,7 +46,7 @@ export const fetchAllOrders = createAsyncThunk(
         throw new Error(data.message || 'Failed to fetch orders');
       }
       
-      console.log(`✅ Successfully fetched ${data.orders?.length || 0} orders from ${data.customerCount || 0} customers`);
+      console.log(`✅ Successfully fetched ${data.orders?.length || 0} orders from MongoDB`);
       
       return {
         orders: data.orders || [],
@@ -41,55 +56,6 @@ export const fetchAllOrders = createAsyncThunk(
       
     } catch (error) {
       console.error('❌ Error fetching all orders:', error);
-      
-      // Fallback: Try to get from localStorage as backup
-      try {
-        const allOrders = [];
-        
-        // Scan localStorage for userOrders_ keys
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key.startsWith('userOrders_')) {
-            try {
-              const userOrders = JSON.parse(localStorage.getItem(key) || '[]');
-              const userId = key.replace('userOrders_', '');
-              
-              // Try to get user info
-              let userInfo = null;
-              const userData = localStorage.getItem('user') || localStorage.getItem(`user_${userId}`);
-              if (userData) {
-                userInfo = JSON.parse(userData);
-              }
-              
-              // Add user info to each order
-              const ordersWithUserInfo = userOrders.map(order => ({
-                ...order,
-                userId: userId,
-                userName: order.userName || userInfo?.name || userInfo?.username || 'Customer',
-                userEmail: order.userEmail || userInfo?.email || 'No email',
-                userPhone: userInfo?.phone,
-                userAddress: userInfo?.address
-              }));
-              
-              allOrders.push(...ordersWithUserInfo);
-            } catch (parseError) {
-              console.warn(`Error parsing orders from ${key}:`, parseError);
-            }
-          }
-        }
-        
-        if (allOrders.length > 0) {
-          console.log(`🔄 Using ${allOrders.length} orders from localStorage as fallback`);
-          return {
-            orders: allOrders,
-            count: allOrders.length,
-            customerCount: new Set(allOrders.map(o => o.userId)).size
-          };
-        }
-      } catch (fallbackError) {
-        console.error('Fallback also failed:', fallbackError);
-      }
-      
       return rejectWithValue(error.message);
     }
   }
@@ -102,12 +68,12 @@ export const updateOrderStatus = createAsyncThunk(
     try {
       console.log(`🔄 Updating order ${orderId} to ${status}`);
       
-      const adminToken = localStorage.getItem('adminToken');
+      const adminToken = localStorage.getItem('adminToken') || localStorage.getItem('userToken');
       if (!adminToken) {
         throw new Error('Admin authorization required');
       }
       
-      const response = await fetch(`${API_BASE_URL}/customers/admin/orders/${orderId}/status`, {
+      const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
@@ -143,12 +109,12 @@ export const cancelOrder = createAsyncThunk(
     try {
       console.log(`❌ Cancelling order ${orderId}`);
       
-      const adminToken = localStorage.getItem('adminToken');
+      const adminToken = localStorage.getItem('adminToken') || localStorage.getItem('userToken');
       if (!adminToken) {
         throw new Error('Admin authorization required');
       }
       
-      const response = await fetch(`${API_BASE_URL}/customers/admin/orders/${orderId}/cancel`, {
+      const response = await fetch(`${API_BASE_URL}/orders/${orderId}/cancel`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
@@ -184,61 +150,26 @@ export const createOrder = createAsyncThunk(
       const user = JSON.parse(localStorage.getItem('user') || 'null');
       if (!user) throw new Error('User not logged in');
       
-      const userId = user._id || user.id;
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('userToken') || localStorage.getItem('adminToken');
+      if (!token) throw new Error('Authorization token missing');
       
-      // Generate order ID
-      const orderId = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const response = await fetch(`${API_BASE_URL}/orders`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(orderData)
+      });
       
-      // Create order object
-      const order = {
-        ...orderData,
-        _id: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        orderId,
-        user: userId,
-        userId: userId,
-        userName: user.name || user.username || 'Customer',
-        userEmail: user.email,
-        userPhone: user.phone,
-        orderDate: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        status: 'processing',
-      };
+      const data = await response.json();
       
-      // Save to backend if possible
-      if (token) {
-        try {
-          const response = await fetch(`${API_BASE_URL}/orders`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(order)
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.order) {
-              order._id = data.order._id || order._id;
-            }
-          }
-        } catch (apiError) {
-          console.warn('Failed to save order to backend:', apiError);
-        }
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to create order');
       }
       
-      // Save to localStorage for current user
-      const userOrdersKey = `userOrders_${userId}`;
-      const existingOrders = JSON.parse(localStorage.getItem(userOrdersKey) || '[]');
-      existingOrders.unshift(order);
-      localStorage.setItem(userOrdersKey, JSON.stringify(existingOrders));
-      
-      // Clear cart
-      localStorage.setItem(`userCart_${userId}`, JSON.stringify([]));
-      
-      console.log('✅ Order created:', order.orderId);
-      return { order };
+      console.log('✅ Order created in MongoDB:', data.order?.orderId);
+      return { order: data.order };
       
     } catch (error) {
       console.error('❌ Error creating order:', error);
@@ -249,7 +180,7 @@ export const createOrder = createAsyncThunk(
 
 // Initial state
 const initialState = {
-  allOrders: [],        // ALL orders from ALL users (Admin view)
+  allOrders: [],
   loading: false,
   error: null,
   currentOrder: null,
@@ -275,7 +206,7 @@ const calculateStats = (orders) => {
     delivered: 0,
     cancelled: 0,
     pending: 0,
-    customerCount: new Set(orders.map(o => o.userId || o.user?._id)).size
+    customerCount: new Set(orders.map(o => o.userId || o.user?._id || o.user)).size
   };
   
   orders.forEach(order => {
@@ -327,7 +258,6 @@ const orderSlice = createSlice({
       state.lastUpdated = null;
       state.stats = initialState.stats;
     },
-    // Add an order (for real-time updates)
     addOrder: (state, action) => {
       if (action.payload) {
         state.allOrders.unshift(action.payload);
@@ -372,7 +302,6 @@ const orderSlice = createSlice({
             state.allOrders[index] = updatedOrder;
             state.stats = calculateStats(state.allOrders);
             state.lastUpdated = new Date().toISOString();
-            console.log('✅ Order status updated in state:', updatedOrder.orderId, '->', updatedOrder.status);
           }
         }
       })
@@ -397,7 +326,6 @@ const orderSlice = createSlice({
             state.allOrders[index] = updatedOrder;
             state.stats = calculateStats(state.allOrders);
             state.lastUpdated = new Date().toISOString();
-            console.log('✅ Order cancelled in state:', updatedOrder.orderId);
           }
         }
       })
@@ -418,7 +346,6 @@ const orderSlice = createSlice({
           state.stats = calculateStats(state.allOrders);
           state.currentOrder = action.payload.order;
           state.lastUpdated = new Date().toISOString();
-          console.log('✅ New order added to state:', action.payload.order.orderId);
         }
       })
       .addCase(createOrder.rejected, (state, action) => {

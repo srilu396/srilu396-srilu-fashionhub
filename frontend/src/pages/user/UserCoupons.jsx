@@ -28,10 +28,9 @@ const UserCoupons = () => {
 
   const fetchCoupons = async () => {
     try {
-      setLoading(true);
       const token = localStorage.getItem('userToken');
-      
-      const response = await fetch('http://localhost:5000/api/coupons/available', {
+      const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+      const response = await fetch(`${API_BASE}/api/coupons/available`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -40,13 +39,27 @@ const UserCoupons = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setCoupons(data.coupons || []);
-        setFilteredCoupons(data.coupons || []);
+        const rawCoupons = data.coupons || [];
+        const now = new Date();
+        const activeOnly = rawCoupons.filter(c => {
+          if (c.active_status === false || c.isActive === false) return false;
+          if (c.valid_until && new Date(c.valid_until) < now) return false;
+          if (c.valid_from && new Date(c.valid_from) > now) return false;
+          return true;
+        });
+        setCoupons(activeOnly);
+        setFilteredCoupons(activeOnly);
       }
     } catch (error) {
       console.error('Error fetching coupons:', error);
       // Fallback to mock data for testing
-      const mockCoupons = getMockCoupons();
+      const now = new Date();
+      const mockCoupons = getMockCoupons().filter(c => {
+        if (c.active_status === false || c.isActive === false) return false;
+        if (c.valid_until && new Date(c.valid_until) < now) return false;
+        if (c.valid_from && new Date(c.valid_from) > now) return false;
+        return true;
+      });
       setCoupons(mockCoupons);
       setFilteredCoupons(mockCoupons);
     } finally {
@@ -371,8 +384,8 @@ const UserCoupons = () => {
                         </>
                       ) : (
                         <>
-                          <span className="currency">$</span>
-                          <span className="value">{coupon.discount_value}</span>
+                          <span className="currency">₹</span>
+                          <span className="value">{Math.round(coupon.discount_value)}</span>
                           <span className="off">OFF</span>
                         </>
                       )}
@@ -380,7 +393,7 @@ const UserCoupons = () => {
                     
                     {coupon.min_order_value > 0 && (
                       <div className="min-order">
-                        Min. order: ${coupon.min_order_value}
+                        Min. order: ₹{Math.round(coupon.min_order_value)}
                       </div>
                     )}
                   </div>

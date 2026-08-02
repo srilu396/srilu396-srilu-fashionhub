@@ -37,6 +37,16 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin'],
     default: 'user'
   },
+  isMainAdmin: {
+    type: Boolean,
+    default: false
+  },
+  permissions: [{
+    type: String,
+    enum: ['products', 'orders', 'customers', 'coupons', 'admins']
+  }],
+  resetPasswordToken: String,
+  resetPasswordExpire: Date,
   status: {
     type: String,
     enum: ['active', 'inactive'],
@@ -78,9 +88,17 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product'
   }],
-  // Orders will be in separate Order model
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Virtual populate for customer orders
+userSchema.virtual('orders', {
+  ref: 'Order',
+  localField: '_id',
+  foreignField: 'user'
 });
 
 userSchema.pre('save', async function(next) {

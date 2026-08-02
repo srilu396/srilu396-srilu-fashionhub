@@ -1,862 +1,907 @@
-import React, { useState, useEffect } from 'react';
-import { productAPI } from '../../utils/api';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import AdminLayout from '../../components/admin/AdminLayout';
+import PageHeader from '../../components/admin/PageHeader';
+import DataTable from '../../components/admin/DataTable';
+import StatusBadge from '../../components/admin/StatusBadge';
+import ActionMenu from '../../components/admin/ActionMenu';
+import ConfirmationModal from '../../components/admin/ConfirmationModal';
+import SelectDropdown from '../../components/admin/SelectDropdown';
+import BulkUploadModal from '../../components/admin/BulkUploadModal';
+import Button from '../../components/admin/Button';
+import { productAPI, categoryAPI } from '../../utils/api';
+import { Edit2, Trash2, Upload, Plus } from 'lucide-react';
+
+const DEFAULT_IMAGE_SET = [
+  'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80'
+];
 
 const ProductsManagement = () => {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState('');
-  const [editingProduct, setEditingProduct] = useState(null);
-  const [editFormData, setEditFormData] = useState({});
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-
-
-
-  // Luxury color palette
-  const colors = {
-    primary: '#1C1C1C',
-    gold: '#D4AF37',
-    champagne: '#F7E7CE',
-    burgundy: '#4B1C2F',
-    neutral: '#F5F5F5',
-    darkBg: '#0F0F0F',
-    emerald: '#014421'
-  };
-
-  // Categories based on your backend's actual categories
-  const categories = {
-    all: { 
-      name: 'All Products', 
-      icon: '🛍️' 
-    },
-    dresses: { 
-      name: 'Dresses', 
-      icon: '👗',
-      subcategories: ['Casual Dresses', 'Party Wear', 'Evening Gowns', 'Ethnic Wear'] 
-    },
-    tops: { 
-      name: 'Tops & Blouses', 
-      icon: '👚',
-      subcategories: ['Crop Tops', 'Shirts', 'Tunics', 'Tank Tops'] 
-    },
-    shoes: { 
-      name: 'Footwear', 
-      icon: '👠',
-      subcategories: ['Heels', 'Flats', 'Sneakers', 'Sandals', 'Boots'] 
-    },
-    accessories: { 
-      name: 'Accessories', 
-      icon: '👜',
-      subcategories: ['Bags', 'Belts', 'Scarves', 'Hats', 'Sunglasses'] 
-    },
-    jewelry: { 
-      name: 'Jewelry', 
-      icon: '💎',
-      subcategories: ['Necklaces', 'Earrings', 'Rings', 'Bracelets', 'Anklets'] 
-    },
-    bags: { 
-      name: 'Bags', 
-      icon: '👜',
-      subcategories: ['Handbags', 'Clutches', 'Tote Bags', 'Backpacks'] 
-    },
-    perfumes: { 
-      name: 'Perfumes', 
-      icon: '🌸',
-      subcategories: ['Floral', 'Woody', 'Fresh', 'Oriental'] 
-    },
-    coats: { 
-      name: 'Coats & Jackets', 
-      icon: '🧥',
-      subcategories: ['Winter Coats', 'Jackets', 'Blazers', 'Raincoats'] 
-    },
-    "women's clothing": { 
-      name: "Women's Clothing", 
-      icon: '👚',
-      subcategories: ['General Wear'] 
-    }
-  };
-
   
+  // Modals state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Enhanced animations CSS
-  const enhancedAnimations = `
-    /* Modern Luxury Animations */
-    @keyframes gentleFloat {
-      0%, 100% { 
-        transform: translateY(0px) scale(1);
-        opacity: 0.6;
-      }
-      50% { 
-        transform: translateY(-20px) scale(1.05);
-        opacity: 0.8;
-      }
-    }
-    
-    @keyframes softGlow {
-      0%, 100% { 
-        opacity: 0.3;
-        box-shadow: 0 0 20px rgba(212, 175, 55, 0.1);
-      }
-      50% { 
-        opacity: 0.6;
-        box-shadow: 0 0 40px rgba(212, 175, 55, 0.3);
-      }
-    }
-    
-    @keyframes smoothSlideUp {
-      from {
-        opacity: 0;
-        transform: translateY(30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    
-    .smooth-appear {
-      animation: smoothSlideUp 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-    }
-    
-    .glass-morphism {
-      background: rgba(30, 30, 30, 0.7);
-      backdrop-filter: blur(20px) saturate(180%);
-      border: 1px solid rgba(212, 175, 55, 0.2);
-      box-shadow: 
-        0 8px 32px rgba(0, 0, 0, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    }
-  `;
+  // Edit Product Modal
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    id: '',
+    name: '',
+    price: 0,
+    category: '',
+    subCategory: '',
+    description: '',
+    rating: 4.8,
+    stock: 10,
+    images: [...DEFAULT_IMAGE_SET]
+  });
+  const [editLoading, setEditLoading] = useState(false);
 
-  // Add styles to document
-  useEffect(() => {
-    const styleSheet = document.createElement('style');
-    styleSheet.innerText = enhancedAnimations;
-    document.head.appendChild(styleSheet);
-    
-    return () => {
-      document.head.removeChild(styleSheet);
-    };
-  }, []);
+  // Bulk Upload Modal state
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+  const navigate = useNavigate();
 
-  // FIXED: Correct API response handling
-  const fetchProducts = async () => {
+  const loadProducts = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      console.log('🔄 Fetching products from API...');
-      
-      // Clear previous products first
-      setProducts([]);
-      
       const data = await productAPI.getAll();
-      console.log('📊 Raw API response:', data);
-      
-      // Handle different response formats - FIXED!
-      let productsArray = [];
-      
-      if (data && data.success && Array.isArray(data.products)) {
-        // Standard response: {success: true, products: [...]}
-        productsArray = data.products;
-        console.log(`✅ Found ${productsArray.length} products in data.products`);
-      } 
-      else if (data && data.data && Array.isArray(data.data)) {
-        // Alternative response: {data: [...]}
-        productsArray = data.data;
-        console.log(`✅ Found ${productsArray.length} products in data.data`);
+      if (data.success && Array.isArray(data.products)) {
+        setProducts(data.products);
+      } else if (Array.isArray(data)) {
+        setProducts(data);
       }
-      else if (Array.isArray(data)) {
-        // Direct array response
-        productsArray = data;
-        console.log(`✅ Found ${productsArray.length} products in direct array`);
-      }
-      else {
-        console.warn('⚠️ Unexpected response format:', data);
-        productsArray = []; // Ensure it's always an array
-      }
-      
-      console.log(`✅ Loaded ${productsArray.length} products`);
-      setProducts(productsArray);
-      
-    } catch (error) {
-      console.error('❌ Error fetching products:', error);
-      setMessage({ 
-        type: 'error', 
-        text: `❌ Error fetching products: ${error.message}` 
-      });
-      setProducts([]); // Set to empty array on error
+    } catch (err) {
+      console.error('Error loading products:', err);
     } finally {
       setLoading(false);
     }
   };
 
- // In your handleImportFromAPI function in ProductsManagement.jsx
-const handleImportFromAPI = async () => {
-  setImporting(true);
-  setMessage('');
-  
-  try {
-    console.log('🚀 Starting import...');
-    
-    // First, test if the endpoint exists
+  const loadCategories = async () => {
     try {
-      const testResponse = await fetch('http://localhost:5000/api/products/import-from-api', {
-        method: 'OPTIONS'
-      });
-      console.log('🔍 Endpoint test:', testResponse.ok);
-    } catch (testError) {
-      console.error('🔍 Endpoint test failed:', testError);
+      const data = await categoryAPI.getAll();
+      if (data.success && Array.isArray(data.categories)) {
+        setCategories(data.categories);
+      }
+    } catch (err) {
+      console.error('Error loading categories:', err);
     }
-    
-    const result = await productAPI.importFromAPI();
-    console.log('📦 Import result:', result);
-    
-    if (result && result.success) {
-      const messageText = result.message || 'Products imported successfully!';
-      setMessage({ 
-        type: 'success', 
-        text: `✅ ${messageText}` 
-      });
-      
-      setTimeout(() => {
-        fetchProducts();
-      }, 1500);
-      
-    } else {
-      setMessage({ 
-        type: 'error', 
-        text: `❌ Import failed: ${result?.message || 'Unknown error'}` 
-      });
-    }
-    
-  } catch (error) {
-    console.error('❌ Import error details:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-    
-    setMessage({ 
-      type: 'error', 
-      text: `❌ Import error: ${error.message}` 
-    });
-  } finally {
-    setImporting(false);
-  }
-};
+  };
 
-  const handleEditProduct = (product) => {
-    setEditingProduct(product);
+  useEffect(() => {
+    loadProducts();
+    loadCategories();
+  }, []);
+
+  // Filter 8 & User Refinement 1: Product Filter includes ALL categories (Active + Disabled)
+  const catalogFilterOptions = useMemo(() => {
+    const opts = [{ label: 'All Categories', value: 'ALL' }];
+    const uniqueCatNames = new Set(categories.map(c => c.name));
+    products.forEach(p => {
+      if (p.category) uniqueCatNames.add(p.category);
+    });
+    Array.from(uniqueCatNames).sort().forEach(catName => {
+      opts.push({ label: catName, value: catName });
+    });
+    return opts;
+  }, [categories, products]);
+
+  // Filter 8 & User Refinement 2: Edit Product options include active categories + preserve current product category if disabled
+  const editCategoryOptions = useMemo(() => {
+    const activeCats = categories
+      .filter(c => c.isEnabled !== false)
+      .map(c => c.name);
+
+    if (selectedProduct && selectedProduct.category && !activeCats.includes(selectedProduct.category)) {
+      activeCats.push(selectedProduct.category);
+    }
+
+    return Array.from(new Set(activeCats))
+      .sort((a, b) => a.localeCompare(b))
+      .map(cat => ({ label: cat, value: cat }));
+  }, [categories, selectedProduct]);
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedProduct) return;
+    setDeleteLoading(true);
+    try {
+      const res = await productAPI.delete(selectedProduct._id || selectedProduct.id);
+      if (res.success || res.message) {
+        setMessage('Product removed successfully.');
+        setProducts(prev => prev.filter(p => (p._id || p.id) !== (selectedProduct._id || selectedProduct.id)));
+      }
+    } catch (err) {
+      console.error('Error deleting product:', err);
+    } finally {
+      setDeleteLoading(false);
+      setDeleteModalOpen(false);
+      setSelectedProduct(null);
+    }
+  };
+
+  const openEditModal = (product) => {
+    setSelectedProduct(product);
+    
+    let prodImages = [];
+    if (Array.isArray(product.images) && product.images.length > 0) {
+      prodImages = [...product.images];
+    } else if (product.image) {
+      prodImages = [product.image];
+    }
+    
+    while (prodImages.length < 3) {
+      prodImages.push(DEFAULT_IMAGE_SET[prodImages.length % 3]);
+    }
+
     setEditFormData({
+      id: product._id || product.id,
       name: product.name || '',
-      description: product.description || '',
       price: product.price || 0,
-      category: product.category || '',
-      inventory: product.inventory || 0,
-      brand: product.brand || '',
-      originalPrice: product.originalPrice || product.price || 0,
-      discount: product.discount || 0,
+      category: product.category || "Women's Couture",
+      subCategory: product.subCategory || 'General',
+      description: product.description || '',
       rating: product.rating || 4.5,
-      isNew: product.isNew || false,
-      featured: product.featured || false
+      stock: product.stock !== undefined ? product.stock : (product.inventory !== undefined ? product.inventory : 10),
+      images: prodImages
     });
+    setEditModalOpen(true);
   };
 
-  const handleUpdateProduct = async (e) => {
+  const handleEditImageChange = (index, value) => {
+    const updated = [...editFormData.images];
+    updated[index] = value;
+    setEditFormData(prev => ({ ...prev, images: updated }));
+  };
+
+  const handleAddEditImageField = () => {
+    setEditFormData(prev => ({ ...prev, images: [...prev.images, ''] }));
+  };
+
+  const handleRemoveEditImageField = (index) => {
+    if (editFormData.images.length <= 3) {
+      alert('Every product must support at least 3 images minimum.');
+      return;
+    }
+    const updated = editFormData.images.filter((_, i) => i !== index);
+    setEditFormData(prev => ({ ...prev, images: updated }));
+  };
+
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
+    if (!selectedProduct) return;
+    setEditLoading(true);
+
     try {
-      const result = await productAPI.update(editingProduct._id, editFormData);
-      if (result.success) {
-        setMessage({ type: 'success', text: '✅ Product updated successfully!' });
-        setEditingProduct(null);
-        fetchProducts();
+      const validImages = editFormData.images.filter(img => img && img.trim() !== '');
+      if (validImages.length < 3) {
+        alert('Please ensure at least 3 valid image URLs are provided.');
+        setEditLoading(false);
+        return;
+      }
+
+      const updatePayload = {
+        name: editFormData.name,
+        price: parseFloat(editFormData.price) || 0,
+        category: editFormData.category,
+        subCategory: editFormData.subCategory,
+        description: editFormData.description,
+        rating: parseFloat(editFormData.rating) || 4.5,
+        stock: parseInt(editFormData.stock, 10) || 0,
+        inventory: parseInt(editFormData.stock, 10) || 0,
+        images: validImages,
+        image: validImages[0]
+      };
+
+      const res = await productAPI.update(selectedProduct._id || selectedProduct.id, updatePayload);
+      if (res.success || res.product || res._id) {
+        setMessage('Product details updated successfully.');
+        loadProducts();
+        setEditModalOpen(false);
       } else {
-        setMessage({ type: 'error', text: '❌ Error updating product' });
+        alert(res.message || 'Failed to update product');
       }
-    } catch (error) {
-      setMessage({ type: 'error', text: '❌ Error updating product: ' + error.message });
+    } catch (err) {
+      console.error('Error updating product:', err);
+      alert('Error updating product. Please try again.');
+    } finally {
+      setEditLoading(false);
     }
   };
 
-  const handleDeleteProduct = async (id) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      try {
-        await productAPI.delete(id);
-        setMessage({ type: 'success', text: '✅ Product deleted successfully' });
-        setProducts(products.filter(product => product._id !== id));
-      } catch (error) {
-        setMessage({ type: 'error', text: '❌ Error deleting product: ' + error.message });
-      }
-    }
+  const openDeleteModal = (product) => {
+    setSelectedProduct(product);
+    setDeleteModalOpen(true);
   };
 
-  const clearAllProducts = async () => {
-    if (window.confirm('⚠️ This will delete ALL products. Are you sure?')) {
-      try {
-        for (const product of products) {
-          await productAPI.delete(product._id);
-        }
-        setMessage({ type: 'success', text: '✅ All products deleted' });
-        setProducts([]);
-      } catch (error) {
-        setMessage({ type: 'error', text: '❌ Error clearing products: ' + error.message });
-      }
+  const columns = [
+    {
+      header: 'Product',
+      accessor: 'name',
+      render: (row) => {
+        const mainImg = row.images?.[0] || row.image || DEFAULT_IMAGE_SET[0];
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <img
+              src={mainImg}
+              alt={row.name}
+              style={{
+                width: '44px',
+                height: '54px',
+                objectFit: 'cover',
+                borderRadius: '6px',
+                backgroundColor: '#0B0B0E',
+                border: '1px solid rgba(212, 175, 55, 0.2)'
+              }}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontWeight: '600', color: '#F9F6F0' }}>{row.name}</span>
+              <span style={{ fontSize: '11px', color: '#A0A0AB' }}>
+                SKU: {row.sku || (row._id || row.id || '').slice(-6).toUpperCase()}
+              </span>
+            </div>
+          </div>
+        );
+      },
+      sortable: true
+    },
+    {
+      header: 'Category',
+      accessor: 'category',
+      render: (row) => (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={{ fontWeight: '500', color: '#F9F6F0' }}>{row.category || "Women's"}</span>
+          <span style={{ fontSize: '11px', color: '#A0A0AB' }}>{row.subCategory || 'Couture'}</span>
+        </div>
+      ),
+      sortable: true
+    },
+    {
+      header: 'Price (₹)',
+      accessor: 'price',
+      align: 'right',
+      render: (row) => (
+        <span style={{ fontWeight: '600', fontFamily: "'Playfair Display', serif", color: '#D4AF37' }}>
+          ₹{Math.round(row.price || 0).toLocaleString('en-IN')}
+        </span>
+      ),
+      sortable: true
+    },
+    {
+      header: 'Stock Status',
+      accessor: 'stock',
+      align: 'center',
+      render: (row) => {
+        const stock = row.stock !== undefined ? row.stock : (row.inventory !== undefined ? row.inventory : 10);
+        if (stock === 0) return <StatusBadge status="out_of_stock" />;
+        if (stock <= 5) return <StatusBadge status="low_stock" customLabel={`${stock} left`} />;
+        return <StatusBadge status="in_stock" customLabel={`${stock} in stock`} />;
+      },
+      sortable: true
+    },
+    {
+      header: 'Actions',
+      align: 'right',
+      width: '110px',
+      render: (row) => (
+        <div style={{ paddingRight: '12px', display: 'flex', justifyContent: 'flex-end' }}>
+          <ActionMenu
+            items={[
+              {
+                label: 'Edit Product',
+                icon: <Edit2 size={14} color="#D4AF37" />,
+                onClick: () => openEditModal(row)
+              },
+              {
+                label: 'Delete Product',
+                icon: <Trash2 size={14} color="#EF4444" />,
+                danger: true,
+                onClick: () => openDeleteModal(row)
+              }
+            ]}
+          />
+        </div>
+      )
     }
-  };
-
-  // Enhanced filter logic
-  const filteredProducts = Array.isArray(products) ? products.filter(product => {
-    if (!product || !product.name || !product.category) return false;
-    
-    const matchesCategory = activeCategory === 'all' || 
-      (product.category && product.category.toLowerCase().includes(activeCategory)) ||
-      (categories[activeCategory]?.subcategories?.some(sub => 
-        product.category.toLowerCase().includes(sub.toLowerCase())
-      ));
-    
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (product.brand && product.brand.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    return matchesCategory && matchesSearch;
-  }) : [];
-
-  if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: `linear-gradient(135deg, ${colors.darkBg} 0%, ${colors.primary} 100%)`,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
-        <div style={{
-          width: '80px',
-          height: '80px',
-          border: `3px solid ${colors.gold}30`,
-          borderTop: `3px solid ${colors.gold}`,
-          borderRadius: '50%',
-          animation: 'gentleFloat 2s ease-in-out infinite',
-          marginBottom: '30px'
-        }}></div>
-        <p style={{ 
-          color: colors.neutral, 
-          fontSize: '20px',
-          background: `linear-gradient(135deg, ${colors.gold}, ${colors.champagne})`,
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-          fontWeight: '600'
-        }}>Loading luxury collection...</p>
-      </div>
-    );
-  }
+  ];
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      position: 'relative',
-      padding: '24px',
-      overflow: 'hidden',
-      background: `linear-gradient(135deg, ${colors.darkBg} 0%, ${colors.primary} 100%)`
-    }}>
-      
-      <div style={{ maxWidth: '1400px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-        
-        {/* Header Section */}
-        <div style={{ 
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '20px',
-          marginBottom: '32px'
-        }} className="smooth-appear">
-          
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <div style={{
-              width: '6px',
-              height: '60px',
-              background: `linear-gradient(to bottom, ${colors.gold}, ${colors.champagne})`,
-              marginRight: '20px',
-              borderRadius: '3px',
-              boxShadow: `0 0 20px ${colors.gold}`
-            }}></div>
-            <div>
-              <h1 style={{
-                fontSize: '2.5rem',
-                fontWeight: '700',
-                background: `linear-gradient(135deg, ${colors.gold}, ${colors.champagne})`,
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                margin: '0 0 8px 0'
-              }}>
-                Luxury Fashion Hub
-              </h1>
-              <p style={{
-                color: colors.champagne,
-                fontSize: '1.2rem',
-                margin: '12px 0 0 0',
-                fontWeight: '300',
-                opacity: 0.9
-              }}>Curated Collection Management</p>
-            </div>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-            <button
-              onClick={handleImportFromAPI}
-              disabled={importing}
-              className="glass-morphism"
-              style={{
-                background: 'transparent',
-                color: colors.gold,
-                border: `2px solid ${colors.gold}`,
-                padding: '16px 32px',
-                borderRadius: '12px',
-                fontWeight: '600',
-                cursor: importing ? 'not-allowed' : 'pointer',
-                fontSize: '16px',
-                opacity: importing ? 0.7 : 1,
-                transition: 'all 0.3s ease'
-              }}
+    <AdminLayout title="Products Catalog">
+      <PageHeader
+        title="Products Management"
+        subtitle="View, edit, and organize luxury inventory items with 3-image support"
+        breadcrumbs={[{ label: 'Products' }]}
+        actions={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Button
+              onClick={() => setBulkUploadOpen(true)}
+              variant="secondary"
+              icon={<Upload size={14} />}
+              title="Bulk import products from Excel"
             >
-              {importing ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '20px',
-                    height: '20px',
-                    border: `3px solid ${colors.gold}30`,
-                    borderTop: `3px solid ${colors.gold}`,
-                    borderRadius: '50%',
-                    animation: 'gentleFloat 1s ease-in-out infinite'
-                  }}></div>
-                  Importing...
-                </div>
-              ) : (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  🚀 Import New Products
-                </span>
-              )}
-            </button>
-            
-            {products.length > 0 && (
-              <button
-                onClick={clearAllProducts}
-                className="glass-morphism"
-                style={{
-                  background: 'transparent',
-                  color: '#F87171',
-                  border: '2px solid #F87171',
-                  padding: '16px 32px',
-                  borderRadius: '12px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  fontSize: '16px',
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  🗑️ Clear All Products
-                </span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Message */}
-        {message && (
-          <div style={{
-            padding: '20px',
-            borderRadius: '12px',
-            marginBottom: '24px',
-            border: '1px solid',
-            background: message.type === 'error' ? 'rgba(153, 27, 27, 0.2)' : 'rgba(6, 95, 70, 0.2)',
-            borderColor: message.type === 'error' ? '#DC2626' : '#059669',
-            color: message.type === 'error' ? '#FCA5A5' : '#6EE7B7',
-            animation: 'smoothSlideUp 0.5s ease-out',
-            backdropFilter: 'blur(15px)'
-          }} className="glass-morphism">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '16px' }}>
-              {message.type === 'error' ? '❌' : '✅'}
-              {message.text}
-            </div>
-          </div>
-        )}
-
-        {/* Debug Section - Add this */}
-        <div style={{
-          display: 'flex',
-          gap: '10px',
-          marginBottom: '20px',
-          flexWrap: 'wrap'
-        }}>
-          <button
-            onClick={() => {
-              console.log('🔍 Debugging products state...');
-              console.log('Current products:', products);
-              console.log('Type of products:', typeof products);
-              console.log('Is array?', Array.isArray(products));
-              console.log('Length:', products.length);
-              console.log('Filtered products:', filteredProducts.length);
-            }}
-            style={{
-              background: 'transparent',
-              border: '1px solid #60A5FA',
-              color: '#60A5FA',
-              padding: '8px 16px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-            className="glass-morphism"
-          >
-            🔍 Debug State
-          </button>
-          
-          <button
-            onClick={async () => {
-              console.log('📡 Testing API directly...');
-              try {
-                const response = await fetch('http://localhost:5000/api/products');
-                const data = await response.json();
-                console.log('Direct API response:', data);
-                alert(`API Status: ${response.status}\nProducts: ${data.products?.length || 0}`);
-              } catch (error) {
-                console.error('API Test Error:', error);
-                alert(`API Error: ${error.message}`);
-              }
-            }}
-            style={{
-              background: 'transparent',
-              border: '1px solid #10B981',
-              color: '#10B981',
-              padding: '8px 16px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-            className="glass-morphism"
-          >
-            📡 Test API
-          </button>
-          
-          <button
-            onClick={fetchProducts}
-            style={{
-              background: 'transparent',
-              border: '1px solid #F59E0B',
-              color: '#F59E0B',
-              padding: '8px 16px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-            className="glass-morphism"
-          >
-            🔄 Refresh Products
-          </button>
-        </div>
-
-        {/* Category Filter */}
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          marginBottom: '24px',
-          flexWrap: 'wrap'
-        }} className="smooth-appear">
-          {Object.entries(categories).map(([key, category], index) => (
-            <button
-              key={key}
-              onClick={() => setActiveCategory(key)}
-              className="glass-morphism"
-              style={{
-                padding: '14px 20px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                fontSize: '14px',
-                animation: `smoothSlideUp 0.6s ease-out ${index * 0.1}s both`,
-                background: 'transparent',
-                border: `1px solid ${colors.gold}40`,
-                color: colors.neutral,
-                transition: 'all 0.3s ease',
-                ...(activeCategory === key ? {
-                  background: `linear-gradient(135deg, ${colors.gold}20, ${colors.champagne}20)`,
-                  border: `1px solid ${colors.gold}`,
-                  color: colors.gold
-                } : {})
-              }}
+              Bulk Upload
+            </Button>
+            <Button
+              to="/admin/new-product"
+              variant="primary"
+              icon={<Plus size={15} />}
             >
-              <span>{category.icon}</span>
-              {category.name}
-              <span style={{ 
-                background: colors.gold, 
-                color: colors.primary,
-                borderRadius: '10px',
-                padding: '3px 8px',
-                fontSize: '11px',
-                marginLeft: '6px',
-                fontWeight: '700',
-                minWidth: '25px'
-              }}>
-                {key === 'all' ? products.length : products.filter(p => 
-                  p.category && p.category.toLowerCase() === key.toLowerCase()
-                ).length}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* Search Box */}
-        <div style={{ marginBottom: '32px' }} className="smooth-appear">
-          <div style={{ position: 'relative', display: 'inline-block' }}>
-            <input
-              type="text"
-              placeholder="Search products by name or description..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                background: 'rgba(30, 30, 30, 0.8)',
-                border: `1px solid #444`,
-                color: colors.neutral,
-                padding: '14px 20px 14px 45px',
-                borderRadius: '10px',
-                fontSize: '15px',
-                width: '380px',
-                backdropFilter: 'blur(10px)',
-                transition: 'all 0.3s ease'
-              }}
-              className="glass-morphism"
-            />
-            <div style={{
-              position: 'absolute',
-              left: '16px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: colors.gold,
-              fontSize: '16px'
-            }}>🔍</div>
+              Add New Product
+            </Button>
           </div>
-        </div>
+        }
+      />
 
-        {/* Products Display */}
-        <div className="smooth-appear">
-          {filteredProducts.length === 0 ? (
-            <div style={{
-              background: `linear-gradient(145deg, ${colors.primary} 0%, #2C2C2C 100%)`,
-              border: `1px solid ${colors.gold}40`,
-              borderRadius: '20px',
-              padding: '60px',
-              textAlign: 'center',
-              color: '#9CA3AF',
-              backdropFilter: 'blur(15px)'
-            }} className="glass-morphism">
-              <div style={{fontSize: '48px', marginBottom: '20px'}}>👗</div>
-              <h3 style={{color: colors.gold, marginBottom: '12px', fontSize: '1.3rem'}}>
-                No products found
-              </h3>
-              <p style={{color: colors.champagne, fontSize: '1rem'}}>
-                {products.length === 0 ? 'Add products or import from API' : 
-                 searchTerm ? 'Try a different search term' : 
-                 `No products in "${categories[activeCategory]?.name}" category`}
-              </p>
-              {products.length === 0 && (
-                <button
-                  onClick={handleImportFromAPI}
-                  style={{
-                    marginTop: '20px',
-                    background: `linear-gradient(135deg, ${colors.gold} 0%, ${colors.champagne} 100%)`,
-                    color: colors.primary,
-                    border: 'none',
-                    padding: '12px 24px',
-                    borderRadius: '10px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    fontSize: '14px'
-                  }}
-                >
-                  🚀 Import Sample Products
-                </button>
-              )}
-            </div>
-          ) : (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-              gap: '20px'
-            }}>
-              {filteredProducts.map((product, index) => (
-                <div key={product._id || index} style={{
-                  background: `linear-gradient(145deg, ${colors.primary} 0%, #2C2C2C 100%)`,
-                  border: `1px solid ${colors.gold}30`,
-                  borderRadius: '16px',
-                  padding: '20px',
-                  transition: 'all 0.4s ease',
-                  animation: `smoothSlideUp 0.6s ease-out ${index * 0.1}s both`,
-                  backdropFilter: 'blur(15px)'
-                }} className="glass-morphism">
-                  <div style={{ display: 'flex', gap: '14px', marginBottom: '16px' }}>
-                    <img 
-                      src={product.images && product.images[0] ? product.images[0] : 'https://via.placeholder.com/70x70/1C1C1C/D4AF37?text=📷'} 
-                      alt={product.name}
-                      style={{ 
-                        width: '70px', 
-                        height: '70px', 
-                        borderRadius: '10px', 
-                        objectFit: 'cover',
-                        border: `2px solid ${colors.gold}30`
-                      }}
-                      onError={(e) => {
-                        e.target.src = 'https://via.placeholder.com/70x70/1C1C1C/D4AF37?text=📷';
-                      }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <h4 style={{ 
-                        color: colors.neutral, 
-                        margin: '0 0 10px 0',
-                        fontSize: '15px',
-                        lineHeight: '1.4',
-                        fontWeight: '600'
-                      }}>
-                        {product.name || 'Untitled Product'}
-                      </h4>
-                      <p style={{ 
-                        color: '#9CA3AF', 
-                        fontSize: '13px',
-                        margin: '0 0 10px 0',
-                        lineHeight: '1.4'
-                      }}>
-                        {(product.description || '').substring(0, 70)}...
-                      </p>
-                      <div style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
-                        <span style={{
-                          color: colors.champagne,
-                          fontWeight: '700',
-                          fontSize: '18px'
-                        }}>
-                          ${typeof product.price === 'number' ? product.price.toFixed(2) : (parseFloat(product.price) || 0).toFixed(2)}
-                        </span>
-                        <span style={{
-                          padding: '4px 12px',
-                          borderRadius: '16px',
-                          fontSize: '11px',
-                          fontWeight: '600',
-                          background: (product.inventory || 0) > 10 
-                            ? 'rgba(6, 95, 70, 0.2)' 
-                            : (product.inventory || 0) > 0 
-                              ? 'rgba(146, 64, 14, 0.2)'
-                              : 'rgba(153, 27, 27, 0.2)',
-                          color: (product.inventory || 0) > 10 
-                            ? '#6EE7B7' 
-                            : (product.inventory || 0) > 0 
-                              ? '#FBBF24'
-                              : '#FCA5A5'
-                        }}>
-                          {product.inventory || 0} in stock
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div style={{ 
-                    display: 'flex', 
-                    gap: '10px',
-                    borderTop: `1px solid ${colors.gold}20`,
-                    paddingTop: '16px'
-                  }}>
-                    <button 
-                      onClick={() => handleEditProduct(product)}
-                      style={{
-                        flex: 1,
-                        padding: '10px',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        background: 'transparent',
-                        border: '1px solid #60A5FA',
-                        color: '#60A5FA',
-                        transition: 'all 0.3s ease'
-                      }}
-                      className="glass-morphism"
-                    >
-                      ✏️ Edit
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteProduct(product._id)}
-                      style={{
-                        flex: 1,
-                        padding: '10px',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        background: 'transparent',
-                        border: '1px solid #F87171',
-                        color: '#F87171',
-                        transition: 'all 0.3s ease'
-                      }}
-                      className="glass-morphism"
-                    >
-                      🗑️ Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+      {message && (
+        <div style={styles.alertNotice}>
+          <span>{message}</span>
+          <button onClick={() => setMessage('')} style={styles.alertClose}>×</button>
         </div>
+      )}
 
-        {/* Stats Cards */}
-        {products.length > 0 && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '20px',
-            marginTop: '32px'
-          }} className="smooth-appear">
-            {[
-              { label: 'Total Products', value: products.length },
-              { label: 'In Stock', value: products.filter(p => (p.inventory || 0) > 0).length },
-              { label: 'Total Value', value: `$${products.reduce((sum, p) => sum + (typeof p.price === 'number' ? p.price : parseFloat(p.price) || 0), 0).toFixed(2)}` },
-              { label: 'Categories', value: new Set(products.filter(p => p.category).map(p => p.category)).size }
-            ].map((stat, index) => (
-              <div key={stat.label} style={{
-                background: `linear-gradient(145deg, ${colors.primary} 0%, #2C2C2C 100%)`,
-                border: `1px solid ${colors.gold}40`,
-                borderRadius: '16px',
-                padding: '24px',
-                textAlign: 'center',
-                transition: 'all 0.4s ease',
-                backdropFilter: 'blur(15px)',
-                animation: `smoothSlideUp 0.6s ease-out ${index * 0.1}s both`
-              }} className="glass-morphism">
-                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: colors.gold, marginBottom: '8px' }}>
-                  {stat.value}
+      {/* Main Products Table */}
+      <DataTable
+        columns={columns}
+        data={products.map(p => ({
+          ...p,
+          stockStatus: (p.stock || 0) === 0 ? 'out_of_stock' : (p.stock || 0) < 5 ? 'low_stock' : 'in_stock'
+        }))}
+        loading={loading}
+        onRowClick={(row) => navigate(`/admin/products/${row._id || row.id}`)}
+        searchPlaceholder="Search products by name, SKU, or category..."
+        filterKey="category"
+        filterLabel="All Categories"
+        filterOptions={catalogFilterOptions}
+        secondaryFilterKey="stockStatus"
+        secondaryFilterLabel="All Status"
+        secondaryFilterOptions={[
+          { label: 'All Status', value: 'ALL' },
+          { label: 'In Stock', value: 'in_stock' },
+          { label: 'Low Stock', value: 'low_stock' },
+          { label: 'Out of Stock', value: 'out_of_stock' }
+        ]}
+        emptyTitle="No Products Found"
+        emptyDescription="Start adding luxury fashion products to populate your store catalog."
+        onEmptyAction={() => navigate('/admin/new-product')}
+        emptyActionLabel="+ Add First Product"
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Product"
+        message={`Are you sure you want to delete "${selectedProduct?.name}"? This action cannot be undone.`}
+        confirmText="Delete Product"
+        danger={true}
+        loading={deleteLoading}
+      />
+
+      {/* Bulk Product Upload Modal */}
+      <BulkUploadModal
+        isOpen={bulkUploadOpen}
+        onClose={() => setBulkUploadOpen(false)}
+        onSuccess={() => {
+          loadProducts();
+          setMessage('Bulk product import completed successfully.');
+        }}
+        existingProducts={products}
+      />
+
+      {/* Full 3-Image Product Edit Form Modal */}
+      {editModalOpen && (
+        <div style={styles.modalOverlay} onClick={() => setEditModalOpen(false)}>
+          <div style={{ ...styles.modalContent, maxWidth: '850px' }} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <h3 style={styles.modalTitle}>Edit Product & Image Gallery</h3>
+              <button onClick={() => setEditModalOpen(false)} style={styles.modalClose}>×</button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} style={styles.editForm}>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Product Name *</label>
+                <input
+                  type="text"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  required
+                  style={styles.input}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div style={styles.inputGroup}>
+                  {/* Category Dropdown with Active Categories + Preserved Disabled Category */}
+                  <SelectDropdown
+                    label="Category"
+                    placeholder="Select Category"
+                    options={editCategoryOptions}
+                    value={editFormData.category}
+                    onChange={(val) => setEditFormData({ ...editFormData, category: val })}
+                    required={true}
+                    searchable={true}
+                  />
                 </div>
-                <div style={{ color: colors.champagne, fontSize: '14px', fontWeight: '600' }}>
-                  {stat.label}
+
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>Sub Category</label>
+                  <input
+                    type="text"
+                    value={editFormData.subCategory}
+                    onChange={(e) => setEditFormData({ ...editFormData, subCategory: e.target.value })}
+                    style={styles.input}
+                  />
                 </div>
               </div>
-            ))}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>Price (₹ INR) *</label>
+                  <input
+                    type="number"
+                    step="1"
+                    value={editFormData.price}
+                    onChange={(e) => setEditFormData({ ...editFormData, price: e.target.value })}
+                    required
+                    style={styles.input}
+                  />
+                </div>
+
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>Stock Quantity *</label>
+                  <input
+                    type="number"
+                    value={editFormData.stock}
+                    onChange={(e) => setEditFormData({ ...editFormData, stock: e.target.value })}
+                    required
+                    min="0"
+                    style={styles.input}
+                  />
+                </div>
+
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>Rating</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="5"
+                    value={editFormData.rating}
+                    onChange={(e) => setEditFormData({ ...editFormData, rating: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+              </div>
+
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Description</label>
+                <textarea
+                  rows="3"
+                  value={editFormData.description}
+                  onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                  style={styles.textarea}
+                />
+              </div>
+
+              {/* 3 Images Minimum Gallery Controls */}
+              <div style={{ marginTop: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={styles.label}>Product Gallery (3 Images Minimum)</label>
+                  <button
+                    type="button"
+                    onClick={handleAddEditImageField}
+                    style={styles.smallAddBtn}
+                  >
+                    + Add Image URL
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                  {editFormData.images.map((imgUrl, idx) => (
+                    <div key={idx} style={styles.editImgCard}>
+                      <div style={styles.editImgHeader}>
+                        <span style={{ fontSize: '10px', color: '#D4AF37', fontWeight: '700' }}>
+                          {idx === 0 ? 'Image 1 (Main Card)' : `Image ${idx + 1} (Gallery)`}
+                        </span>
+                        {editFormData.images.length > 3 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveEditImageField(idx)}
+                            style={styles.removeImgBtn}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                      <img
+                        src={imgUrl || DEFAULT_IMAGE_SET[idx % 3]}
+                        alt={`Thumb ${idx + 1}`}
+                        onError={(e) => { e.target.src = 'https://via.placeholder.com/100?text=Invalid+Image'; }}
+                        style={styles.editThumb}
+                      />
+                      <input
+                        type="url"
+                        value={imgUrl}
+                        onChange={(e) => handleEditImageChange(idx, e.target.value)}
+                        placeholder={`https://images.unsplash.com/...`}
+                        required={idx < 3}
+                        style={{ ...styles.input, fontSize: '11px', padding: '8px' }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={styles.modalFooter}>
+                <button
+                  type="button"
+                  onClick={() => setEditModalOpen(false)}
+                  style={styles.secondaryBtn}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  style={styles.primaryBtn}
+                >
+                  {editLoading ? 'Saving Changes...' : 'Save Product Changes'}
+                </button>
+              </div>
+            </form>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </AdminLayout>
   );
+};
+
+const styles = {
+  primaryBtn: {
+    padding: '9px 18px',
+    backgroundColor: '#D4AF37',
+    color: '#0D0D10',
+    border: 'none',
+    borderRadius: '24px',
+    fontSize: '12px',
+    fontWeight: '700',
+    textDecoration: 'none',
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    boxShadow: '0 4px 16px rgba(212, 175, 55, 0.25)'
+  },
+  secondaryBtn: {
+    padding: '9px 16px',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    border: '1px solid rgba(255, 255, 255, 0.12)',
+    color: '#F9F6F0',
+    borderRadius: '24px',
+    fontSize: '12px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    transition: 'all 0.2s ease'
+  },
+  goldOutlineBtn: {
+    padding: '9px 16px',
+    backgroundColor: 'rgba(212, 175, 55, 0.08)',
+    border: '1px solid rgba(212, 175, 55, 0.35)',
+    color: '#D4AF37',
+    borderRadius: '24px',
+    fontSize: '12px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    transition: 'all 0.2s ease'
+  },
+  smallAddBtn: {
+    padding: '4px 10px',
+    backgroundColor: 'rgba(212, 175, 55, 0.15)',
+    border: '1px solid rgba(212, 175, 55, 0.3)',
+    color: '#D4AF37',
+    borderRadius: '6px',
+    fontSize: '11px',
+    fontWeight: '600',
+    cursor: 'pointer'
+  },
+  alertNotice: {
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    border: '1px solid rgba(16, 185, 129, 0.3)',
+    color: '#10B981',
+    padding: '12px 16px',
+    borderRadius: '8px',
+    marginBottom: '20px',
+    fontSize: '13px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  alertClose: {
+    background: 'none',
+    border: 'none',
+    color: '#10B981',
+    fontSize: '18px',
+    cursor: 'pointer'
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backdropFilter: 'blur(8px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10000,
+    padding: '20px'
+  },
+  modalContent: {
+    backgroundColor: '#141418',
+    border: '1px solid rgba(212, 175, 55, 0.35)',
+    borderRadius: '16px',
+    padding: '24px',
+    width: '100%',
+    maxHeight: '90vh',
+    overflowY: 'auto',
+    boxShadow: '0 20px 50px rgba(0,0,0,0.8)'
+  },
+  modalHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '16px',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+    paddingBottom: '12px'
+  },
+  modalTitle: {
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
+    fontSize: '18px',
+    fontWeight: '600',
+    color: '#F9F6F0',
+    margin: 0
+  },
+  modalClose: {
+    background: 'none',
+    border: 'none',
+    color: '#A0A0AB',
+    fontSize: '24px',
+    cursor: 'pointer'
+  },
+  editForm: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px'
+  },
+  inputGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px'
+  },
+  label: {
+    fontSize: '11px',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: '0.8px',
+    color: '#D4AF37'
+  },
+  input: {
+    padding: '10px 12px',
+    backgroundColor: '#0B0B0E',
+    border: '1px solid rgba(255, 255, 255, 0.12)',
+    borderRadius: '6px',
+    color: '#F9F6F0',
+    fontSize: '13px',
+    outline: 'none'
+  },
+  textarea: {
+    padding: '10px 12px',
+    backgroundColor: '#0B0B0E',
+    border: '1px solid rgba(255, 255, 255, 0.12)',
+    borderRadius: '6px',
+    color: '#F9F6F0',
+    fontSize: '13px',
+    outline: 'none',
+    fontFamily: 'inherit',
+    resize: 'vertical'
+  },
+  editImgCard: {
+    backgroundColor: '#0B0B0E',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    borderRadius: '6px',
+    padding: '8px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px'
+  },
+  editImgHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  removeImgBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#EF4444',
+    fontSize: '16px',
+    cursor: 'pointer'
+  },
+  editThumb: {
+    width: '100%',
+    height: '90px',
+    objectFit: 'cover',
+    borderRadius: '4px'
+  },
+  modalFooter: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '12px',
+    marginTop: '16px',
+    paddingTop: '12px',
+    borderTop: '1px solid rgba(255, 255, 255, 0.08)'
+  },
+  // View Product Drawer Styles
+  viewMediaContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px'
+  },
+  viewHeroWrapper: {
+    position: 'relative',
+    width: '100%',
+    height: '240px',
+    borderRadius: '12px',
+    overflow: 'hidden',
+    border: '1px solid rgba(212, 175, 55, 0.25)',
+    backgroundColor: '#0D0D11'
+  },
+  viewHeroImage: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover'
+  },
+  heroOverlayBadge: {
+    position: 'absolute',
+    bottom: '10px',
+    right: '10px',
+    backgroundColor: 'rgba(5, 5, 8, 0.75)',
+    border: '1px solid rgba(212, 175, 55, 0.3)',
+    borderRadius: '20px',
+    padding: '4px 10px',
+    fontSize: '11px',
+    color: '#D4AF37',
+    fontWeight: '600'
+  },
+  viewThumbGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: '10px'
+  },
+  viewThumbWrapper: {
+    height: '70px',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    border: '2px solid transparent',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    backgroundColor: '#0D0D11'
+  },
+  viewThumbImg: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover'
+  },
+  viewCardBox: {
+    backgroundColor: '#0D0D11',
+    padding: '18px',
+    borderRadius: '12px',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  categoryBadge: {
+    fontSize: '11px',
+    color: '#D4AF37',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: '0.8px',
+    backgroundColor: 'rgba(212, 175, 55, 0.12)',
+    padding: '4px 10px',
+    borderRadius: '14px',
+    border: '1px solid rgba(212, 175, 55, 0.25)'
+  },
+  subCategoryBadge: {
+    fontSize: '11px',
+    color: '#A0A0AB',
+    fontWeight: '600',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    padding: '4px 10px',
+    borderRadius: '14px'
+  },
+  viewTitle: {
+    fontFamily: "'Playfair Display', serif",
+    fontSize: '22px',
+    fontWeight: '700',
+    color: '#F9F6F0',
+    margin: '0 0 10px 0'
+  },
+  viewDescription: {
+    fontSize: '13px',
+    color: '#A0A0AB',
+    lineHeight: '1.6',
+    margin: 0
+  },
+  cardHeaderTitle: {
+    fontSize: '11px',
+    fontWeight: '700',
+    color: '#D4AF37',
+    textTransform: 'uppercase',
+    letterSpacing: '0.8px',
+    marginBottom: '6px'
+  },
+  metaLabel: {
+    fontSize: '11px',
+    color: '#A0A0AB',
+    display: 'block'
+  },
+  priceGold: {
+    fontFamily: "'Playfair Display', serif",
+    fontSize: '24px',
+    color: '#D4AF37',
+    fontWeight: '700'
+  },
+  origPriceStrikethrough: {
+    fontSize: '14px',
+    color: '#A0A0AB',
+    textDecoration: 'line-through'
+  },
+  discountPill: {
+    fontSize: '11px',
+    fontWeight: '700',
+    color: '#10B981',
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    padding: '3px 8px',
+    borderRadius: '10px',
+    border: '1px solid rgba(16, 185, 129, 0.3)'
+  },
+  taxBadge: {
+    fontSize: '11px',
+    color: '#A0A0AB',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px'
+  },
+  specValue: {
+    fontSize: '15px',
+    fontWeight: '600',
+    color: '#F9F6F0',
+    display: 'block',
+    marginTop: '4px'
+  },
+  viewMetadataBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    border: '1px solid rgba(255, 255, 255, 0.05)',
+    borderRadius: '10px',
+    padding: '12px 16px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  }
 };
 
 export default ProductsManagement;

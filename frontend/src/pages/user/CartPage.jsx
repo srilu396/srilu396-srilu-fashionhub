@@ -70,7 +70,8 @@ const validateCoupon = async (code) => {
     setCouponError('');
     
     const token = localStorage.getItem('userToken');
-    const response = await fetch(`http://localhost:5000/api/coupons/validate/${code}`, {
+    const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+    const response = await fetch(`${API_BASE}/api/coupons/validate/${code}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -219,7 +220,8 @@ const handleCheckout = async () => {
     if (appliedCoupon) {
       try {
         const token = localStorage.getItem('userToken');
-        await fetch(`http://localhost:5000/api/coupons/apply/${appliedCoupon.coupon_code}`, {
+        const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+        await fetch(`${API_BASE}/api/coupons/apply/${appliedCoupon.coupon_code}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -388,7 +390,7 @@ const handleCheckout = async () => {
                           {item.product.originalPrice && item.product.originalPrice > item.product.price && (
                             <div className="discount-badge">
                               <Tag size={12} />
-                              Save ${((item.product.originalPrice - item.product.price) * item.quantity).toFixed(2)}
+                              Save ₹{Math.round((item.product.originalPrice - item.product.price) * item.quantity).toLocaleString('en-IN')}
                             </div>
                           )}
                         </div>
@@ -406,10 +408,10 @@ const handleCheckout = async () => {
                         
                         <div className="item-actions">
                           <div className="price-section">
-                            <div className="current-price">${(item.product.price * item.quantity).toFixed(2)}</div>
+                            <div className="current-price">₹{Math.round(item.product.price * item.quantity).toLocaleString('en-IN')}</div>
                             {item.product.originalPrice && item.product.originalPrice > item.product.price && (
                               <div className="original-price">
-                                ${(item.product.originalPrice * item.quantity).toFixed(2)}
+                                ₹{Math.round(item.product.originalPrice * item.quantity).toLocaleString('en-IN')}
                               </div>
                             )}
                           </div>
@@ -497,7 +499,7 @@ const handleCheckout = async () => {
                 <span className="coupon-value">
                   {appliedCoupon.discount_type === 'percentage' 
                     ? `${appliedCoupon.discount_value}% OFF` 
-                    : `$${appliedCoupon.discount_value} OFF`}
+                    : `₹${Math.round(appliedCoupon.discount_value)} OFF`}
                 </span>
               </div>
             </div>
@@ -527,13 +529,13 @@ const handleCheckout = async () => {
       <div className="summary-section">
         <div className="summary-row">
           <span className="label">Subtotal</span>
-          <span className="value">${totalAmount.toFixed(2)}</span>
+          <span className="value">₹{Math.round(totalAmount).toLocaleString('en-IN')}</span>
         </div>
         
         {productSavings > 0 && (
           <div className="summary-row discount">
             <span className="label">Product Discount</span>
-            <span className="value">-${productSavings.toFixed(2)}</span>
+            <span className="value">-₹{Math.round(productSavings).toLocaleString('en-IN')}</span>
           </div>
         )}
         
@@ -547,7 +549,7 @@ const handleCheckout = async () => {
                 </span>
               )}
             </span>
-            <span className="value">-${couponDiscount.toFixed(2)}</span>
+            <span className="value">-₹{Math.round(couponDiscount).toLocaleString('en-IN')}</span>
           </div>
         )}
         
@@ -558,7 +560,7 @@ const handleCheckout = async () => {
         
         <div className="summary-row">
           <span className="label">Tax & Duties</span>
-          <span className="value">${(totalAmount * 0.1).toFixed(2)}</span>
+          <span className="value">₹{Math.round(totalAmount * 0.1).toLocaleString('en-IN')}</span>
         </div>
       </div>
       
@@ -568,7 +570,7 @@ const handleCheckout = async () => {
         <div className="summary-row total">
           <span className="label">Total Amount</span>
           <span className="total-value">
-            ${finalAmount.toFixed(2)}
+            ₹{Math.round(finalAmount).toLocaleString('en-IN')}
           </span>
         </div>
         <div className="total-note">Including all taxes and duties</div>

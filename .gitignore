@@ -1,0 +1,5 @@
+# Graphify - local knowledge graph, not needed in repo
+graphify-out/
+.agents/
+node_modules/
+E-commerce-website

@@ -1,3 +1,5 @@
+export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+
 // Product categories with icons
 export const CATEGORIES = [
   { id: 'all', name: 'All Products', icon: '🛍️', color: '#D4AF37' },

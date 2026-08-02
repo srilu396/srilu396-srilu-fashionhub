@@ -14,11 +14,12 @@ const getUserId = () => {
 // Function to get full product data by ID
 const getProductById = async (productId) => {
   try {
-    // Try to fetch from API first
-    const response = await fetch(`http://localhost:5000/api/products/${productId}`);
+    const API_BASE = `${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api`;
+    const response = await fetch(`${API_BASE}/products/${productId}`);
     
     if (response.ok) {
-      const product = await response.json();
+      const data = await response.json();
+      const product = data.product || data;
       console.log('✅ Fetched product from API for cart:', product.name);
       return product;
     } else {

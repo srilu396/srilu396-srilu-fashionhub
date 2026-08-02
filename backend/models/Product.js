@@ -28,10 +28,13 @@ const productSchema = new mongoose.Schema({
     max: 100
   },
   category: {
-  type: String,
-  required: [true, 'Product category is required'],
-  enum: ['dresses', 'tops', 'shoes', 'accessories', 'coats', 'jewelry', 'bags', 'perfumes', 'women\'s clothing', 'jewelery']
-},
+    type: String,
+    required: [true, 'Product category is required']
+  },
+  subCategory: {
+    type: String,
+    default: 'General'
+  },
   brand: {  // ADDED: Brand name
     type: String,
     default: 'Luxury Brand'
@@ -44,7 +47,19 @@ const productSchema = new mongoose.Schema({
     type: Number,
     required: [true, 'Inventory count is required'],
     min: [0, 'Inventory cannot be negative'],
-    default: 0
+    default: 10
+  },
+  stock: {
+    type: Number,
+    default: 10
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  updatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   },
   rating: {  // ADDED: Product rating
     type: Number,
@@ -68,6 +83,8 @@ const productSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
+}, {
+  suppressReservedKeysWarning: true
 });
 
 productSchema.pre('save', function(next) {
