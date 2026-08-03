@@ -70,11 +70,11 @@ const AnalyticsPage = () => {
             src={row.image || DEFAULT_PRODUCT_IMAGE}
             alt={row.name}
             onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_PRODUCT_IMAGE; }}
-            style={{ width: '40px', height: '48px', objectFit: 'cover', borderRadius: '8px', border: '1px solid rgba(212, 175, 55, 0.2)' }}
+            style={{ width: '40px', height: '48px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--admin-border-subtle)' }}
           />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontWeight: '600', color: '#F9F6F0' }}>{row.name}</span>
-            <span style={{ fontSize: '11px', color: '#A0A0AB' }}>SKU #{row._id?.slice(-6)?.toUpperCase()}</span>
+            <span style={{ fontWeight: '600', color: 'var(--admin-text-primary)' }}>{row.name}</span>
+            <span style={{ fontSize: '11px', color: 'var(--admin-text-secondary)' }}>SKU #{row._id?.slice(-6)?.toUpperCase()}</span>
           </div>
         </div>
       )
@@ -82,13 +82,13 @@ const AnalyticsPage = () => {
     {
       header: 'Category',
       accessor: 'category',
-      render: (row) => <span style={{ textTransform: 'capitalize', color: '#A0A0AB' }}>{row.category || 'Couture'}</span>
+      render: (row) => <span style={{ textTransform: 'capitalize', color: 'var(--admin-text-secondary)' }}>{row.category || 'Couture'}</span>
     },
     {
       header: 'Unit Price',
       accessor: 'price',
       align: 'right',
-      render: (row) => <span style={{ color: '#D4AF37', fontWeight: '600', fontFamily: "'Playfair Display', serif" }}>₹{Math.round(row.price || 0).toLocaleString('en-IN')}</span>
+      render: (row) => <span style={{ color: 'var(--admin-gold)', fontWeight: '600', fontFamily: "var(--font-serif, 'Playfair Display', serif)" }}>₹{Math.round(row.price || 0).toLocaleString('en-IN')}</span>
     },
     {
       header: 'Current Stock',
@@ -98,29 +98,34 @@ const AnalyticsPage = () => {
     }
   ];
 
-  const categoryDistribution = React.useMemo(() => {
+  const salesByCategory = React.useMemo(() => {
     if (!topProducts || topProducts.length === 0) return [];
     
-    const categoryCounts = {};
-    let totalCount = 0;
+    const categoryRevenueMap = {};
+    let grandTotalRevenue = 0;
 
     topProducts.forEach(prod => {
-      const cat = prod.category || 'Couture';
-      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
-      totalCount += 1;
+      const cat = prod.category ? prod.category.charAt(0).toUpperCase() + prod.category.slice(1) : 'Couture';
+      const estRevenue = (prod.price || 0) * (prod.soldCount || Math.max(1, 10 - (prod.stock || 0)));
+      categoryRevenueMap[cat] = (categoryRevenueMap[cat] || 0) + estRevenue;
+      grandTotalRevenue += estRevenue;
     });
 
-    const palette = ['#D4AF37', '#C5A059', '#EFA0C0', '#10B981', '#60A5FA', '#F59E0B'];
+    const palette = ['#D4AF37', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#F97316', '#14B8A6'];
     
-    return Object.entries(categoryCounts).map(([catName, count], idx) => {
-      const percentage = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
-      return {
-        name: catName,
-        share: `${percentage}%`,
-        count: `${count} Item${count > 1 ? 's' : ''}`,
-        color: palette[idx % palette.length]
-      };
-    });
+    return Object.entries(categoryRevenueMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([catName, rev], idx) => {
+        const percentage = grandTotalRevenue > 0 ? Math.round((rev / grandTotalRevenue) * 100) : 0;
+        return {
+          name: catName,
+          revenue: `₹${Math.round(rev).toLocaleString('en-IN')}`,
+          share: `${percentage}%`,
+          percentageVal: percentage,
+          color: palette[idx % palette.length]
+        };
+      });
   }, [topProducts]);
 
   return (
@@ -198,33 +203,38 @@ const AnalyticsPage = () => {
               ))}
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '180px', color: '#A0A0AB', fontSize: '13px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '180px', color: 'var(--admin-text-muted)', fontSize: '13px' }}>
               <p>No revenue data recorded for this period.</p>
             </div>
           )}
         </div>
 
-        {/* Category Share Card */}
+        {/* Sales by Category (Revenue) Card */}
         <div style={styles.card}>
-          <h3 style={styles.cardTitle}>Category Distribution</h3>
-          <p style={styles.cardSubtitle}>Catalog allocation across garment lines</p>
-          {categoryDistribution && categoryDistribution.length > 0 ? (
-            <div style={styles.categoryList}>
-              {categoryDistribution.map((cat, i) => (
-                <div key={i} style={styles.catRow}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: cat.color }} />
-                    <span style={{ fontSize: '0.85rem', color: '#F9F6F0', fontWeight: '500' }}>{cat.name}</span>
+          <h3 style={styles.cardTitle}>Sales by Category (Revenue)</h3>
+          <p style={styles.cardSubtitle}>Revenue distribution across product lines</p>
+          {salesByCategory && salesByCategory.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px' }}>
+              {salesByCategory.map((cat, i) => (
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--admin-text-primary)', fontWeight: '600' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: cat.color }} />
+                      <span>{cat.name}</span>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--admin-gold)', marginRight: '8px' }}>{cat.revenue}</span>
+                      <span style={{ color: 'var(--admin-text-muted)', fontSize: '11px' }}>({cat.share})</span>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '0.78rem', color: '#A0A0AB' }}>{cat.count}</span>
-                    <span style={{ fontSize: '0.82rem', fontWeight: '700', color: cat.color }}>{cat.share}</span>
+                  <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--admin-input-bg)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${cat.percentageVal}%`, backgroundColor: cat.color, borderRadius: '4px', transition: 'width 0.4s ease' }} />
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '180px', color: '#A0A0AB', fontSize: '13px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '180px', color: 'var(--admin-text-muted)', fontSize: '13px' }}>
               <p>No catalog products available for category breakdown.</p>
             </div>
           )}
@@ -296,7 +306,7 @@ const styles = {
   barTrack: {
     width: '28px',
     height: '140px',
-    backgroundColor: 'var(--input-bg)',
+    backgroundColor: 'var(--admin-input-bg)',
     borderRadius: '14px',
     overflow: 'hidden',
     display: 'flex',
@@ -325,7 +335,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '12px 14px',
-    backgroundColor: 'var(--admin-bg)',
+    backgroundColor: 'var(--admin-surface-2)',
     borderRadius: '12px',
     border: '1px solid var(--admin-border-subtle)'
   },

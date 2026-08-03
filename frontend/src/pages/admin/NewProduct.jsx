@@ -4,6 +4,7 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import PageHeader from '../../components/admin/PageHeader';
 import SelectDropdown from '../../components/admin/SelectDropdown';
 import { productAPI, categoryAPI } from '../../utils/api';
+import { useToast } from '../../components/common/Toast/useToast';
 
 const DEFAULT_IMAGES = [
   'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=800&auto=format&fit=crop&q=80',
@@ -12,6 +13,7 @@ const DEFAULT_IMAGES = [
 ];
 
 const NewProduct = () => {
+  const toast = useToast();
   const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
@@ -79,7 +81,7 @@ const NewProduct = () => {
 
   const handleRemoveImageField = (index) => {
     if (formData.images.length <= 3) {
-      alert('Products require a minimum of 3 images.');
+      toast.warning('Products require a minimum of 3 images.', 'Validation Requirement');
       return;
     }
     const updatedImages = formData.images.filter((_, i) => i !== index);
@@ -97,10 +99,9 @@ const NewProduct = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setMessage({ text: '', type: '' });
 
     if (!formData.category || formData.category.trim() === '') {
-      setMessage({ text: 'Please select a valid category for the product.', type: 'error' });
+      toast.warning('Please select a valid category for the product.', 'Category Required');
       setLoading(false);
       return;
     }
@@ -108,7 +109,7 @@ const NewProduct = () => {
     try {
       const validImages = formData.images.filter(img => img && img.trim() !== '');
       if (validImages.length < 3) {
-        setMessage({ text: 'Please provide at least 3 valid image URLs.', type: 'error' });
+        toast.warning('Please provide at least 3 valid image URLs.', 'Images Required');
         setLoading(false);
         return;
       }
@@ -131,14 +132,14 @@ const NewProduct = () => {
       const res = await productAPI.create(payload);
 
       if (res.success || res._id || res.id || res.product) {
-        setMessage({ text: 'Luxury product created successfully!', type: 'success' });
+        toast.success('Your product has been added successfully.', 'Product Added');
         setTimeout(() => navigate('/admin/products'), 1200);
       } else {
-        setMessage({ text: res.message || 'Failed to create product.', type: 'error' });
+        toast.error(res.message || 'Failed to create product.', 'Error');
       }
     } catch (err) {
       console.error('Error creating product:', err);
-      setMessage({ text: 'Error connecting to server. Please try again.', type: 'error' });
+      toast.error('Error connecting to server. Please try again.', 'Error');
     } finally {
       setLoading(false);
     }
@@ -411,11 +412,28 @@ const styles = {
     textDecoration: 'none'
   },
   primaryBtn: {
-    padding: '13px 32px',
-    backgroundColor: '#D4AF37',
-    color: '#0D0D0E',
+    padding: '14px 28px',
+    backgroundColor: 'var(--admin-gold)',
+    color: 'var(--active-pill-text, #0D0D10)',
     border: 'none',
-    borderRadius: '6px',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    letterSpacing: '0.5px',
+    boxShadow: '0 4px 14px rgba(212, 175, 55, 0.25)',
+    transition: 'all 0.2s ease',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px'
+  },
+  submitBtn: {
+    padding: '14px 28px',
+    backgroundColor: 'var(--admin-gold)',
+    color: 'var(--active-pill-text)',
+    border: 'none',
+    borderRadius: '8px',
     fontSize: '14px',
     fontWeight: '700',
     cursor: 'pointer',
@@ -423,9 +441,9 @@ const styles = {
   },
   addImageBtn: {
     padding: '6px 14px',
-    backgroundColor: 'rgba(212, 175, 55, 0.15)',
-    border: '1px solid rgba(212, 175, 55, 0.3)',
-    color: '#D4AF37',
+    backgroundColor: 'var(--admin-gold-muted)',
+    border: '1px solid var(--admin-border-gold)',
+    color: 'var(--admin-gold)',
     borderRadius: '6px',
     fontSize: '12px',
     fontWeight: '600',
@@ -446,19 +464,20 @@ const styles = {
     margin: '0 auto'
   },
   formSection: {
-    backgroundColor: '#141419',
-    border: '1px solid rgba(212, 175, 55, 0.2)',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '12px',
     padding: '24px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '18px'
+    gap: '18px',
+    boxShadow: 'var(--admin-shadow-sm)'
   },
   sectionHeading: {
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '17px',
     fontWeight: '600',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     margin: '0 0 4px 0'
   },
   grid2: {
@@ -481,41 +500,41 @@ const styles = {
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: '0.8px',
-    color: '#D4AF37'
+    color: 'var(--admin-gold)'
   },
   input: {
     padding: '12px 14px',
-    backgroundColor: '#0B0B0E',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '6px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '14px',
     outline: 'none'
   },
   readOnlyDisplay: {
     padding: '12px 14px',
-    backgroundColor: 'rgba(212, 175, 55, 0.1)',
-    border: '1px solid rgba(212, 175, 55, 0.3)',
+    backgroundColor: 'var(--admin-gold-muted)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '6px',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     fontSize: '16px',
     fontWeight: '700',
-    fontFamily: "'Playfair Display', serif"
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)"
   },
   textarea: {
     padding: '12px 14px',
-    backgroundColor: '#0B0B0E',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '6px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '14px',
     outline: 'none',
     fontFamily: 'inherit',
     resize: 'vertical'
   },
   imageCardBox: {
-    backgroundColor: '#0B0B0E',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-border-subtle)',
     borderRadius: '8px',
     padding: '12px',
     display: 'flex',
@@ -530,14 +549,14 @@ const styles = {
   imageIndexBadge: {
     fontSize: '10px',
     fontWeight: '700',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     textTransform: 'uppercase',
     letterSpacing: '0.5px'
   },
   removeImgBtn: {
     background: 'none',
     border: 'none',
-    color: '#EF4444',
+    color: 'var(--admin-danger)',
     fontSize: '16px',
     cursor: 'pointer',
     lineHeight: '1'
@@ -547,7 +566,7 @@ const styles = {
     height: '140px',
     borderRadius: '6px',
     overflow: 'hidden',
-    backgroundColor: '#141419',
+    backgroundColor: 'var(--admin-surface-2)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center'
@@ -559,7 +578,7 @@ const styles = {
   },
   emptyThumbPlaceholder: {
     fontSize: '11px',
-    color: '#A0A0AB'
+    color: 'var(--admin-text-muted)'
   },
   buttonRow: {
     display: 'flex',

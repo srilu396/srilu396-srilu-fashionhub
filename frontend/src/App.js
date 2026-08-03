@@ -5,6 +5,8 @@ import { store } from './redux/store';
 import { AuthProvider } from './context/AuthContext';
 import { ProductProvider } from './context/ProductContext'; 
 
+import { ToastProvider } from './components/common/Toast/ToastProvider';
+
 // Import all user pages
 import LandingPage from './pages/LandingPage';
 import UserLogin from './pages/user/UserLogin';
@@ -86,9 +88,10 @@ const PublicRouteUser = ({ children }) => {
 // Main App Content
 const AppContent = () => {
   return (
-    <AuthProvider>
-      <ProductProvider>
-        <Router>
+    <ToastProvider>
+      <AuthProvider>
+        <ProductProvider>
+          <Router>
           <div className="App">
             <Routes>
               {/* Public Routes */}
@@ -274,6 +277,7 @@ const AppContent = () => {
         </Router>
       </ProductProvider>
     </AuthProvider>
+    </ToastProvider>
   );
 };
 

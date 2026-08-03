@@ -8,8 +8,10 @@ import ConfirmationModal from '../../components/admin/ConfirmationModal';
 import Button from '../../components/admin/Button';
 import { categoryAPI, productAPI } from '../../utils/api';
 import { Plus, Tag, Pencil, Eye, EyeOff, Trash2, AlertTriangle, X } from 'lucide-react';
+import { useToast } from '../../components/common/Toast/useToast';
 
 const CategoryManagement = () => {
+  const toast = useToast();
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +50,7 @@ const CategoryManagement = () => {
       }
     } catch (err) {
       console.error('Error loading data:', err);
+      toast.error('Error loading category information');
     } finally {
       setLoading(false);
     }
@@ -83,13 +86,17 @@ const CategoryManagement = () => {
     try {
       if (editCategory) {
         await categoryAPI.update(editCategory._id || editCategory.id, formData);
+        toast.success('Category updated successfully.', 'Category Updated');
       } else {
         await categoryAPI.create(formData);
+        toast.success('Category created successfully.', 'Category Created');
       }
       fetchData();
       setModalOpen(false);
     } catch (err) {
-      setValidationError(err.message || 'Error saving category');
+      const msg = err.message || 'Error saving category';
+      setValidationError(msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
@@ -106,9 +113,12 @@ const CategoryManagement = () => {
         const currentId = String(c._id || c.id || '');
         return currentId === targetId ? { ...c, isEnabled: !c.isEnabled } : c;
       }));
+      toast.info(`Category "${cat.name}" ${!cat.isEnabled ? 'enabled' : 'disabled'}.`, 'Category Updated');
     } catch (err) {
       console.error('Error toggling category status:', err);
-      setValidationError(err.message || 'Error updating category status');
+      const msg = err.message || 'Error updating category status';
+      setValidationError(msg);
+      toast.error(msg);
     }
   };
 
@@ -117,7 +127,9 @@ const CategoryManagement = () => {
 
     // Condition 2 Check: Must be Disabled first
     if (cat.isEnabled) {
-      setValidationError('Disable this category before deleting it.');
+      const msg = 'Disable this category before deleting it.';
+      setValidationError(msg);
+      toast.warning(msg);
       return;
     }
 
@@ -130,7 +142,9 @@ const CategoryManagement = () => {
     });
 
     if (associatedProducts.length > 0) {
-      setValidationError('This category cannot be deleted because it still contains products.');
+      const msg = 'This category cannot be deleted because it still contains products.';
+      setValidationError(msg);
+      toast.warning(msg);
       return;
     }
 
@@ -145,13 +159,18 @@ const CategoryManagement = () => {
     try {
       const res = await categoryAPI.delete(selectedCategory._id || selectedCategory.id);
       if (res && res.success === false) {
-        setValidationError(res.message || 'Failed to delete category.');
+        const msg = res.message || 'Failed to delete category.';
+        setValidationError(msg);
+        toast.error(msg);
       } else {
+        toast.success(`Category "${selectedCategory.name}" deleted successfully.`, 'Deleted Successfully');
         fetchData();
       }
     } catch (err) {
       console.error('Error deleting category:', err);
-      setValidationError(err.message || 'Error deleting category. Please try again.');
+      const msg = err.message || 'Error deleting category. Please try again.';
+      setValidationError(msg);
+      toast.error(msg);
     } finally {
       setDeleteLoading(false);
       setDeleteModalOpen(false);
@@ -169,16 +188,16 @@ const CategoryManagement = () => {
             <img 
               src={row.image} 
               alt={row.name} 
-              style={{ width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover', border: '1px solid rgba(212,175,55,0.3)' }} 
+              style={{ width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--admin-border-subtle)' }} 
             />
           ) : (
             <div style={styles.iconBox}>
-              <Tag size={18} color="var(--admin-gold, #D4AF37)" />
+              <Tag size={18} color="var(--admin-gold)" />
             </div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontWeight: '600', color: 'var(--admin-text-primary, #F9F6F0)' }}>{row.name}</span>
-            <span style={{ fontSize: '11px', color: 'var(--admin-text-secondary, #A0A0AB)' }}>/{row.slug || 'category'}</span>
+            <span style={{ fontWeight: '600', color: 'var(--admin-text-primary)' }}>{row.name}</span>
+            <span style={{ fontSize: '11px', color: 'var(--admin-text-secondary)' }}>/{row.slug || 'category'}</span>
           </div>
         </div>
       ),
@@ -187,7 +206,7 @@ const CategoryManagement = () => {
     {
       header: 'Description',
       accessor: 'description',
-      render: (row) => <span style={{ color: 'var(--admin-text-secondary, #A0A0AB)', fontSize: '12px' }}>{row.description || 'No description'}</span>
+      render: (row) => <span style={{ color: 'var(--admin-text-secondary)', fontSize: '12px' }}>{row.description || 'No description'}</span>
     },
     {
       header: 'Status',
@@ -208,19 +227,19 @@ const CategoryManagement = () => {
           items={[
             { 
               label: 'Edit Category', 
-              icon: <Pencil size={14} color="var(--admin-gold, #D4AF37)" />,
+              icon: <Pencil size={14} color="var(--admin-gold)" />,
               onClick: () => handleOpenEdit(row) 
             },
             { 
               label: row.isEnabled ? 'Disable Category' : 'Enable Category', 
               icon: row.isEnabled 
-                ? <EyeOff size={14} color="var(--admin-text-secondary, #A0A0AB)" /> 
-                : <Eye size={14} color="var(--admin-gold, #D4AF37)" />,
+                ? <EyeOff size={14} color="var(--admin-text-secondary)" /> 
+                : <Eye size={14} color="var(--admin-gold)" />,
               onClick: () => handleToggleStatus(row) 
             },
             { 
               label: 'Delete Category', 
-              icon: <Trash2 size={14} color="var(--admin-danger, #EF4444)" />,
+              icon: <Trash2 size={14} color="var(--admin-danger)" />,
               danger: true, 
               onClick: () => handleDeleteClick(row) 
             }
@@ -323,9 +342,9 @@ const CategoryManagement = () => {
                   id="isEnabled"
                   checked={formData.isEnabled}
                   onChange={(e) => setFormData({ ...formData, isEnabled: e.target.checked })}
-                  style={{ accentColor: '#D4AF37' }}
+                  style={{ accentColor: 'var(--admin-gold)' }}
                 />
-                <label htmlFor="isEnabled" style={{ color: '#F9F6F0', fontSize: '13px', cursor: 'pointer' }}>
+                <label htmlFor="isEnabled" style={{ color: 'var(--admin-text-primary)', fontSize: '13px', cursor: 'pointer' }}>
                   Enable Category (Visible in Product Creation)
                 </label>
               </div>
@@ -361,8 +380,8 @@ const CategoryManagement = () => {
 const styles = {
   alertNotice: {
     padding: '12px 18px',
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    border: '1px solid rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'var(--admin-danger-bg)',
+    border: '1px solid var(--admin-danger)',
     borderRadius: 'var(--radius-sm, 8px)',
     display: 'flex',
     alignItems: 'center',
@@ -372,7 +391,7 @@ const styles = {
   alertClose: {
     background: 'none',
     border: 'none',
-    color: 'var(--admin-text-secondary, #A0A0AB)',
+    color: 'var(--admin-text-secondary)',
     cursor: 'pointer',
     padding: '2px',
     display: 'flex',
@@ -382,7 +401,7 @@ const styles = {
     width: '40px',
     height: '40px',
     borderRadius: '6px',
-    backgroundColor: 'rgba(212,175,55,0.1)',
+    backgroundColor: 'var(--admin-gold-muted)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center'
@@ -392,38 +411,38 @@ const styles = {
     top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
     backdropFilter: 'blur(4px)',
-    zIndex: 1000,
+    zIndex: 'var(--z-modal, 9999)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center'
   },
   modalCard: {
     width: '460px',
-    backgroundColor: '#141419',
-    border: '1px solid rgba(212, 175, 55, 0.3)',
+    backgroundColor: 'var(--admin-modal-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '10px',
-    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.7)',
+    boxShadow: 'var(--admin-shadow-lg)',
     overflow: 'hidden'
   },
   modalHeader: {
     padding: '18px 24px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+    borderBottom: '1px solid var(--admin-border-subtle)',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#0E0E12'
+    backgroundColor: 'var(--admin-card-bg)'
   },
   modalTitle: {
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '18px',
     fontWeight: '600',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     margin: 0
   },
   modalClose: {
     background: 'none',
     border: 'none',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-muted)',
     fontSize: '20px',
     cursor: 'pointer'
   },
@@ -440,26 +459,26 @@ const styles = {
   },
   label: {
     fontSize: '11px',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: '0.8px'
   },
   input: {
     padding: '10px 14px',
-    backgroundColor: '#0D0D11',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '6px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '13px',
     outline: 'none'
   },
   textarea: {
     padding: '10px 14px',
-    backgroundColor: '#0D0D11',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '6px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '13px',
     outline: 'none',
     resize: 'vertical'

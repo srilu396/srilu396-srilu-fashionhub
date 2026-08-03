@@ -2,30 +2,30 @@ import React from 'react';
 
 const statusStyles = {
   // Order & Product & User status mappings
-  active: { bg: 'rgba(16, 185, 129, 0.12)', text: '#10B981', border: 'rgba(16, 185, 129, 0.3)', label: 'Active' },
-  completed: { bg: 'rgba(16, 185, 129, 0.12)', text: '#10B981', border: 'rgba(16, 185, 129, 0.3)', label: 'Completed' },
-  delivered: { bg: 'rgba(16, 185, 129, 0.12)', text: '#10B981', border: 'rgba(16, 185, 129, 0.3)', label: 'Delivered' },
-  paid: { bg: 'rgba(16, 185, 129, 0.12)', text: '#10B981', border: 'rgba(16, 185, 129, 0.3)', label: 'Paid' },
+  active: { bg: 'var(--admin-success-bg)', text: 'var(--admin-success)', border: 'var(--admin-success)', label: 'Active' },
+  completed: { bg: 'var(--admin-success-bg)', text: 'var(--admin-success)', border: 'var(--admin-success)', label: 'Completed' },
+  delivered: { bg: 'var(--admin-success-bg)', text: 'var(--admin-success)', border: 'var(--admin-success)', label: 'Delivered' },
+  paid: { bg: 'var(--admin-success-bg)', text: 'var(--admin-success)', border: 'var(--admin-success)', label: 'Paid' },
 
-  pending: { bg: 'rgba(245, 158, 11, 0.12)', text: '#F59E0B', border: 'rgba(245, 158, 11, 0.3)', label: 'Pending' },
-  processing: { bg: 'rgba(59, 130, 246, 0.12)', text: '#3B82F6', border: 'rgba(59, 130, 246, 0.3)', label: 'Processing' },
-  upcoming: { bg: 'rgba(59, 130, 246, 0.12)', text: '#60A5FA', border: 'rgba(59, 130, 246, 0.3)', label: 'Upcoming' },
-  shipped: { bg: 'rgba(139, 92, 246, 0.12)', text: '#A78BFA', border: 'rgba(139, 92, 246, 0.3)', label: 'Shipped' },
+  pending: { bg: 'var(--admin-warning-bg)', text: 'var(--admin-warning)', border: 'var(--admin-warning)', label: 'Pending' },
+  processing: { bg: 'var(--admin-info-bg)', text: 'var(--admin-info)', border: 'var(--admin-info)', label: 'Processing' },
+  upcoming: { bg: 'var(--admin-info-bg)', text: 'var(--admin-info)', border: 'var(--admin-info)', label: 'Upcoming' },
+  shipped: { bg: 'var(--admin-info-bg)', text: 'var(--admin-info)', border: 'var(--admin-info)', label: 'Shipped' },
   
-  inactive: { bg: 'rgba(107, 114, 128, 0.15)', text: '#9CA3AF', border: 'rgba(107, 114, 128, 0.3)', label: 'Inactive' },
-  cancelled: { bg: 'rgba(239, 68, 68, 0.12)', text: '#EF4444', border: 'rgba(239, 68, 68, 0.3)', label: 'Cancelled' },
-  expired: { bg: 'rgba(239, 68, 68, 0.12)', text: '#EF4444', border: 'rgba(239, 68, 68, 0.3)', label: 'Expired' },
-  out_of_stock: { bg: 'rgba(239, 68, 68, 0.12)', text: '#EF4444', border: 'rgba(239, 68, 68, 0.3)', label: 'Out of Stock' },
-  low_stock: { bg: 'rgba(245, 158, 11, 0.12)', text: '#F59E0B', border: 'rgba(245, 158, 11, 0.3)', label: 'Low Stock' },
-  in_stock: { bg: 'rgba(16, 185, 129, 0.12)', text: '#10B981', border: 'rgba(16, 185, 129, 0.3)', label: 'In Stock' }
+  inactive: { bg: 'var(--admin-gold-muted)', text: 'var(--admin-text-muted)', border: 'var(--admin-border-subtle)', label: 'Inactive' },
+  cancelled: { bg: 'var(--admin-danger-bg)', text: 'var(--admin-danger)', border: 'var(--admin-danger)', label: 'Cancelled' },
+  expired: { bg: 'var(--admin-danger-bg)', text: 'var(--admin-danger)', border: 'var(--admin-danger)', label: 'Expired' },
+  out_of_stock: { bg: 'var(--admin-danger-bg)', text: 'var(--admin-danger)', border: 'var(--admin-danger)', label: 'Out of Stock' },
+  low_stock: { bg: 'var(--admin-warning-bg)', text: 'var(--admin-warning)', border: 'var(--admin-warning)', label: 'Low Stock' },
+  in_stock: { bg: 'var(--admin-success-bg)', text: 'var(--admin-success)', border: 'var(--admin-success)', label: 'In Stock' }
 };
 
 const StatusBadge = ({ status = 'active', customLabel }) => {
   const normalizedKey = String(status).toLowerCase().replace(/\s+/g, '_');
   const style = statusStyles[normalizedKey] || {
-    bg: 'rgba(212, 175, 55, 0.12)',
-    text: '#D4AF37',
-    border: 'rgba(212, 175, 55, 0.3)',
+    bg: 'var(--admin-gold-muted)',
+    text: 'var(--admin-gold)',
+    border: 'var(--admin-border-gold)',
     label: status
   };
 

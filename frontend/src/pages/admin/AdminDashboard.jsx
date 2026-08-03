@@ -83,7 +83,7 @@ const AdminDashboard = () => {
       header: 'Order Ref',
       accessor: (row) => row.orderNumber || row._id?.slice(-6)?.toUpperCase() || 'N/A',
       render: (row) => (
-        <span style={{ fontWeight: '600', color: '#D4AF37' }}>
+        <span style={{ fontWeight: '600', color: 'var(--admin-gold)' }}>
           #{row.orderNumber || row._id?.slice(-6)?.toUpperCase() || 'N/A'}
         </span>
       )
@@ -93,10 +93,10 @@ const AdminDashboard = () => {
       accessor: (row) => row.user ? `${row.user.firstName || ''} ${row.user.lastName || ''}`.trim() : 'Guest',
       render: (row) => (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontWeight: '500', color: '#F9F6F0' }}>
+          <span style={{ fontWeight: '500', color: 'var(--admin-text-primary)' }}>
             {row.user?.firstName ? `${row.user.firstName} ${row.user.lastName || ''}` : row.shippingAddress?.fullName || 'Customer'}
           </span>
-          <span style={{ fontSize: '11px', color: '#A0A0AB' }}>
+          <span style={{ fontSize: '11px', color: 'var(--admin-text-muted)' }}>
             {row.user?.email || row.shippingAddress?.email || 'N/A'}
           </span>
         </div>
@@ -112,7 +112,7 @@ const AdminDashboard = () => {
       accessor: 'totalAmount',
       align: 'right',
       render: (row) => (
-        <span style={{ fontWeight: '600', fontFamily: "'Playfair Display', serif", color: '#D4AF37' }}>
+        <span style={{ fontWeight: '600', fontFamily: "var(--font-serif, 'Playfair Display', serif)", color: 'var(--admin-gold)' }}>
           ₹{Math.round(row.totalAmount || row.totalPrice || 0).toLocaleString('en-IN')}
         </span>
       ),
@@ -138,7 +138,7 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <AdminLayout title="Executive Overview">
+    <AdminLayout title="Executive Overview" showSearch={false}>
       {/* Compact Unified Page Header */}
       <PageHeader
         title="Executive Overview"
@@ -147,7 +147,7 @@ const AdminDashboard = () => {
         actions={
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Button to="/admin/new-product" variant="primary" icon={<Plus size={15} />}>
-              Add Product
+              Add Products
             </Button>
             <Button to="/admin/admins" variant="secondary" icon={<Users size={15} />}>
               Manage Admins

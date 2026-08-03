@@ -3,6 +3,7 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import PageHeader from '../../components/admin/PageHeader';
 import StatusBadge from '../../components/admin/StatusBadge';
 import { useAuth } from '../../context/AuthContext';
+import { Eye, EyeOff } from 'lucide-react';
 
 const AdminProfile = () => {
   const { adminUser } = useAuth();
@@ -19,6 +20,10 @@ const AdminProfile = () => {
     newPassword: '',
     confirmPassword: ''
   });
+
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleProfileSave = (e) => {
     e.preventDefault();
@@ -121,35 +126,107 @@ const AdminProfile = () => {
           <form onSubmit={handlePasswordSave} style={styles.form}>
             <div style={styles.inputGroup}>
               <label style={styles.label}>Current Password</label>
-              <input
-                type="password"
-                value={passwordData.currentPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                required
-                style={styles.input}
-              />
+              <div style={{ position: 'relative', width: '100%' }}>
+                <input
+                  type={showCurrentPassword ? "text" : "password"}
+                  value={passwordData.currentPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                  required
+                  style={{ ...styles.input, width: '100%', boxSizing: 'border-box', paddingRight: '40px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--admin-text-secondary)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '4px',
+                    zIndex: 2
+                  }}
+                  title={showCurrentPassword ? "Hide password" : "Show password"}
+                >
+                  {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             <div style={styles.inputGroup}>
               <label style={styles.label}>New Password</label>
-              <input
-                type="password"
-                value={passwordData.newPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                required
-                style={styles.input}
-              />
+              <div style={{ position: 'relative', width: '100%' }}>
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  required
+                  style={{ ...styles.input, width: '100%', boxSizing: 'border-box', paddingRight: '40px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--admin-text-secondary)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '4px',
+                    zIndex: 2
+                  }}
+                  title={showNewPassword ? "Hide password" : "Show password"}
+                >
+                  {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             <div style={styles.inputGroup}>
               <label style={styles.label}>Confirm New Password</label>
-              <input
-                type="password"
-                value={passwordData.confirmPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                required
-                style={styles.input}
-              />
+              <div style={{ position: 'relative', width: '100%' }}>
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  required
+                  style={{ ...styles.input, width: '100%', boxSizing: 'border-box', paddingRight: '40px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--admin-text-secondary)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '4px',
+                    zIndex: 2
+                  }}
+                  title={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             <button type="submit" style={styles.secondaryBtn}>
@@ -176,56 +253,57 @@ const styles = {
     gap: '24px'
   },
   card: {
-    backgroundColor: '#141417',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '10px',
     padding: '28px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '20px'
+    gap: '20px',
+    boxShadow: 'var(--admin-shadow-sm)'
   },
   profileHeader: {
     display: 'flex',
     alignItems: 'center',
     gap: '16px',
     paddingBottom: '18px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+    borderBottom: '1px solid var(--admin-border-subtle)'
   },
   avatarLarge: {
     width: '60px',
     height: '60px',
     borderRadius: '50%',
-    backgroundColor: '#4B1C2F',
-    color: '#D4AF37',
-    border: '2px solid rgba(212, 175, 55, 0.4)',
+    backgroundColor: 'var(--admin-gold-muted)',
+    color: 'var(--admin-gold)',
+    border: '2px solid var(--admin-border-gold)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontWeight: '700',
     fontSize: '24px'
   },
   profileName: {
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '20px',
     fontWeight: '700',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     margin: 0
   },
   profileEmail: {
     fontSize: '12px',
-    color: '#A0A0AB'
+    color: 'var(--admin-text-secondary)'
   },
   sectionHeading: {
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '18px',
     fontWeight: '600',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     margin: 0
   },
   sectionDesc: {
     fontSize: '12px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     margin: '4px 0 12px 0'
   },
   form: {
@@ -243,21 +321,21 @@ const styles = {
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: '0.8px',
-    color: '#D4AF37'
+    color: 'var(--admin-gold)'
   },
   input: {
     padding: '11px 14px',
-    backgroundColor: '#0D0D0E',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '6px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '13px',
     outline: 'none'
   },
   primaryBtn: {
     padding: '10px 20px',
-    backgroundColor: '#D4AF37',
-    color: '#0D0D0E',
+    backgroundColor: 'var(--admin-gold)',
+    color: 'var(--active-pill-text)',
     border: 'none',
     borderRadius: '6px',
     fontSize: '12px',
@@ -268,9 +346,9 @@ const styles = {
   },
   secondaryBtn: {
     padding: '10px 20px',
-    backgroundColor: 'transparent',
-    border: '1px solid rgba(212, 175, 55, 0.4)',
-    color: '#D4AF37',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-border-gold)',
+    color: 'var(--admin-gold)',
     borderRadius: '6px',
     fontSize: '12px',
     fontWeight: '600',

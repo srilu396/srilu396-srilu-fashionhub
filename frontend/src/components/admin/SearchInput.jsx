@@ -32,15 +32,15 @@ const SearchInput = ({
         style={{
           width: '100%',
           padding: '10px 38px 10px 42px',
-          backgroundColor: 'var(--input-bg, rgba(255, 255, 255, 0.04))',
-          border: '1px solid var(--admin-border-gold, rgba(212, 175, 55, 0.25))',
+          backgroundColor: 'var(--admin-input-bg)',
+          border: '1px solid var(--admin-border-gold)',
           borderRadius: '24px',
-          color: 'var(--admin-text-primary, #F9F8F6)',
+          color: 'var(--admin-text-primary)',
           fontSize: '13px',
           fontFamily: "var(--font-sans, 'Sora', sans-serif)",
           outline: 'none',
           transition: 'all 0.2s ease',
-          boxShadow: 'var(--admin-shadow-sm, 0 2px 6px rgba(0, 0, 0, 0.04))'
+          boxShadow: 'var(--admin-shadow-sm)'
         }}
       />
 

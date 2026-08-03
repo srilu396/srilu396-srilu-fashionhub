@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 import AnimatedBackground from '../../components/AnimatedBackground';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { useToast } from '../../components/common/Toast/useToast';
 import { Tag, Percent, Calendar, Copy, Clock, Filter, Search, ChevronRight, Gift } from 'lucide-react';
 
 const UserCoupons = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [coupons, setCoupons] = useState([]);
   const [filteredCoupons, setFilteredCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -217,11 +219,8 @@ const UserCoupons = () => {
     // Store coupon in localStorage for checkout
     localStorage.setItem('selectedCoupon', JSON.stringify(coupon));
     
-    // Navigate to cart or show success message
-    alert(`Coupon ${coupon.coupon_code} selected! It will be applied at checkout.`);
-    
-    // Optionally navigate to cart
-    // navigate('/user/cart');
+    // Show success message via Toast
+    toast.success(`Coupon ${coupon.coupon_code} selected! It will be applied at checkout.`, 'Coupon Saved');
   };
 
   const getStatusBadge = (coupon) => {

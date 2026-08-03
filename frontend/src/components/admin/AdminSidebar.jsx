@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import Logo from '../common/Logo';
 
 const navItems = [
   { label: 'Dashboard', path: '/admin/dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -46,15 +47,13 @@ const AdminSidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) =>
       }}>
         {/* Brand Header */}
         <div style={styles.brandHeader}>
-          <NavLink to="/admin/dashboard" style={styles.brandLink}>
-            <span style={styles.goldLogoIcon}>S</span>
-            {!collapsed && (
-              <div style={styles.brandTextWrapper}>
-                <span style={styles.brandTitle}>SRILU</span>
-                <span style={styles.brandSubtitle}>EXECUTIVE ADMIN</span>
-              </div>
-            )}
-          </NavLink>
+          <Logo 
+            variant={collapsed ? 'mark' : 'full'}
+            size={collapsed ? 'sm' : 'md'}
+            subtitle="EXECUTIVE ADMIN"
+            mode="gold"
+            to="/admin/dashboard"
+          />
           
           {/* Collapse Toggle Button */}
           <button 
@@ -77,9 +76,9 @@ const AdminSidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) =>
               onClick={() => setMobileOpen(false)}
               style={({ isActive }) => ({
                 ...styles.navLink,
-                backgroundColor: isActive ? 'rgba(212, 175, 55, 0.12)' : 'transparent',
-                color: isActive ? '#D4AF37' : '#A0A0AB',
-                borderLeft: isActive ? '3px solid #D4AF37' : '3px solid transparent',
+                backgroundColor: isActive ? 'var(--admin-sidebar-active)' : 'transparent',
+                color: isActive ? 'var(--admin-gold)' : 'var(--admin-text-secondary)',
+                borderLeft: isActive ? '3px solid var(--admin-gold)' : '3px solid transparent',
                 justifyContent: collapsed ? 'center' : 'flex-start',
                 padding: collapsed ? '12px 0' : '11px 16px',
               })}
@@ -132,7 +131,7 @@ const styles = {
     position: 'sticky',
     top: 0,
     left: 0,
-    backgroundColor: 'var(--admin-sidebar-bg, #0E0E12)',
+    backgroundColor: 'var(--admin-sidebar-bg)',
     borderRight: '1px solid var(--admin-border-subtle)',
     display: 'flex',
     flexDirection: 'column',
@@ -238,7 +237,7 @@ const styles = {
     boxSizing: 'border-box',
     padding: '10px',
     backgroundColor: 'var(--admin-gold)',
-    color: 'var(--admin-bg, #0D0D0E)',
+    color: 'var(--active-pill-text)',
     textAlign: 'center',
     borderRadius: '8px',
     fontWeight: '600',

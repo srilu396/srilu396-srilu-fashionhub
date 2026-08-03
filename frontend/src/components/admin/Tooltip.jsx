@@ -81,8 +81,8 @@ const Tooltip = ({ text, children }) => {
           right: alignRight ? '0px' : 'auto',
           left: !alignRight ? '50%' : 'auto',
           transform: !alignRight ? 'translateX(-50%)' : 'none',
-          backgroundColor: '#1A1A22',
-          color: '#F9F6F0',
+          backgroundColor: 'var(--admin-modal-bg)',
+          color: 'var(--admin-text-primary)',
           padding: '8px 12px',
           borderRadius: '6px',
           fontSize: '11px',
@@ -93,9 +93,9 @@ const Tooltip = ({ text, children }) => {
           whiteSpace: 'normal',
           wordBreak: 'break-word',
           textAlign: 'left',
-          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.75)',
-          border: '1px solid rgba(212, 175, 55, 0.35)',
-          zIndex: 999,
+          boxShadow: 'var(--admin-shadow-md)',
+          border: '1px solid var(--admin-border-gold)',
+          zIndex: 'var(--z-tooltip, 10000)',
           pointerEvents: 'none',
           animation: 'tooltipFadeScale 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards'
         }}>

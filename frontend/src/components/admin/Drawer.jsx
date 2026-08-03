@@ -56,30 +56,30 @@ const styles = {
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
     backdropFilter: 'blur(4px)',
-    zIndex: 999,
+    zIndex: 'var(--z-dropdown, 1000)',
     display: 'flex',
     justifyContent: 'flex-end'
   },
   drawerCard: {
     height: '100%',
-    backgroundColor: '#141419',
-    borderLeft: '1px solid rgba(212, 175, 55, 0.25)',
-    boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'var(--admin-modal-bg)',
+    borderLeft: '1px solid var(--admin-border-gold)',
+    boxShadow: 'var(--admin-shadow-lg)',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden'
   },
   header: {
     padding: '24px 28px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+    borderBottom: '1px solid var(--admin-border-subtle)',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    backgroundColor: '#0E0E12'
+    backgroundColor: 'var(--admin-card-bg)'
   },
   subtitle: {
     fontSize: '11px',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     textTransform: 'uppercase',
     letterSpacing: '1px',
     fontWeight: '600',
@@ -87,16 +87,16 @@ const styles = {
     marginBottom: '4px'
   },
   title: {
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '20px',
     fontWeight: '700',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     margin: 0
   },
   closeBtn: {
     background: 'none',
     border: 'none',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-muted)',
     cursor: 'pointer',
     padding: '6px',
     borderRadius: '50%',

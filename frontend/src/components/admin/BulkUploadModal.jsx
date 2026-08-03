@@ -3,6 +3,7 @@ import { Upload, Download, FileSpreadsheet, CheckCircle2, AlertCircle, X, Refres
 import Button from './Button';
 import ExcelJS from 'exceljs';
 import { productAPI } from '../../utils/api';
+import { useToast } from '../common/Toast/useToast';
 
 const DEFAULT_IMAGE_SET = [
   'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=800&auto=format&fit=crop&q=80',
@@ -49,6 +50,7 @@ const SAMPLE_CSV_ROW = [
 ];
 
 const BulkUploadModal = ({ isOpen, onClose, onSuccess, existingProducts = [] }) => {
+  const toast = useToast();
   const [file, setFile] = useState(null);
   const [parsing, setParsing] = useState(false);
   const [previewData, setPreviewData] = useState(null); // { validRows: [], errorRows: [] }
@@ -420,6 +422,7 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, existingProducts = [] }) 
     const validRows = previewData.validRows;
     const total = validRows.length;
 
+    const toastId = toast.loading(`Importing ${total} products...`, 'Bulk Import Started');
     setProgress({ current: 0, total, successCount: 0, failCount: 0 });
 
     const BATCH_SIZE = 10;
@@ -451,6 +454,8 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, existingProducts = [] }) 
 
     setImporting(false);
     setImportDone(true);
+    toast.removeToast(toastId);
+    toast.success(`Successfully imported ${successCount} products into store catalog.`, 'Bulk Import Complete');
     if (onSuccess) onSuccess();
   };
 
@@ -517,11 +522,11 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, existingProducts = [] }) 
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleFileDrop}
               >
-                <Upload size={36} color="#D4AF37" style={{ marginBottom: '12px' }} />
-                <span style={{ fontSize: '14px', fontWeight: '600', color: '#F9F6F0', marginBottom: '4px' }}>
+                <Upload size={36} color="var(--admin-gold)" style={{ marginBottom: '12px' }} />
+                <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--admin-text-primary)', marginBottom: '4px' }}>
                   Drag & Drop CSV or Excel (.xlsx) file here
                 </span>
-                <span style={{ fontSize: '12px', color: '#A0A0AB', marginBottom: '16px' }}>
+                <span style={{ fontSize: '12px', color: 'var(--admin-text-muted)', marginBottom: '16px' }}>
                   Supports .csv, .xlsx, and .xls formatted spreadsheets up to 10MB
                 </span>
                 <label style={styles.browseBtn}>
@@ -539,8 +544,8 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, existingProducts = [] }) 
 
           {parsing && (
             <div style={styles.centeredState}>
-              <RefreshCw size={32} color="#D4AF37" className="spin-animation" style={{ marginBottom: '12px' }} />
-              <span style={{ fontSize: '14px', color: '#F9F6F0', fontWeight: '600' }}>Parsing Catalog Spreadsheet & Validating Rows...</span>
+              <RefreshCw size={32} color="var(--admin-gold)" className="spin-animation" style={{ marginBottom: '12px' }} />
+              <span style={{ fontSize: '14px', color: 'var(--admin-text-primary)', fontWeight: '600' }}>Parsing Catalog Spreadsheet & Validating Rows...</span>
             </div>
           )}
 
@@ -655,13 +660,13 @@ const styles = {
     padding: '20px'
   },
   modal: {
-    backgroundColor: '#141418',
-    border: '1px solid rgba(212, 175, 55, 0.35)',
+    backgroundColor: 'var(--admin-modal-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '20px',
     width: '100%',
     maxWidth: '680px',
     padding: '28px',
-    boxShadow: '0 25px 60px rgba(0,0,0,0.7)',
+    boxShadow: 'var(--admin-shadow-lg)',
     boxSizing: 'border-box'
   },
   header: {
@@ -670,14 +675,14 @@ const styles = {
     justifyContent: 'space-between',
     marginBottom: '20px',
     paddingBottom: '16px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+    borderBottom: '1px solid var(--admin-border-subtle)'
   },
   iconBadge: {
     width: '42px',
     height: '42px',
     borderRadius: '10px',
-    backgroundColor: 'rgba(212, 175, 55, 0.12)',
-    border: '1px solid rgba(212, 175, 55, 0.3)',
+    backgroundColor: 'var(--admin-gold-muted)',
+    border: '1px solid var(--admin-border-gold)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center'
@@ -685,18 +690,18 @@ const styles = {
   title: {
     fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '1.25rem',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     margin: 0
   },
   subtitle: {
     fontSize: '0.8rem',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-muted)',
     margin: 0
   },
   closeBtn: {
     background: 'none',
     border: 'none',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-muted)',
     cursor: 'pointer',
     padding: '4px',
     borderRadius: '50%'
@@ -706,8 +711,8 @@ const styles = {
     flexDirection: 'column'
   },
   templateSection: {
-    backgroundColor: 'rgba(212, 175, 55, 0.06)',
-    border: '1px solid rgba(212, 175, 55, 0.2)',
+    backgroundColor: 'var(--admin-gold-muted)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '12px',
     padding: '16px',
     display: 'flex',
@@ -718,10 +723,10 @@ const styles = {
   },
   downloadCsvBtn: {
     padding: '8px 12px',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '8px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '11px',
     fontWeight: '600',
     cursor: 'pointer',
@@ -733,10 +738,10 @@ const styles = {
   },
   downloadExcelBtn: {
     padding: '8px 14px',
-    backgroundColor: '#D4AF37',
+    backgroundColor: 'var(--admin-gold)',
     border: 'none',
     borderRadius: '8px',
-    color: '#0D0D10',
+    color: 'var(--active-pill-text)',
     fontSize: '11px',
     fontWeight: '700',
     cursor: 'pointer',
@@ -744,24 +749,24 @@ const styles = {
     alignItems: 'center',
     gap: '6px',
     whiteSpace: 'nowrap',
-    boxShadow: '0 4px 12px rgba(212, 175, 55, 0.25)',
+    boxShadow: 'var(--admin-shadow-sm)',
     transition: 'all 0.2s ease'
   },
   dropZone: {
-    border: '2px dashed rgba(212, 175, 55, 0.3)',
+    border: '2px dashed var(--admin-border-gold)',
     borderRadius: '14px',
     padding: '36px 20px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.015)',
+    backgroundColor: 'var(--admin-input-bg)',
     textAlign: 'center'
   },
   browseBtn: {
     padding: '10px 20px',
-    backgroundColor: '#D4AF37',
-    color: '#0D0D10',
+    backgroundColor: 'var(--admin-gold)',
+    color: 'var(--active-pill-text)',
     borderRadius: '8px',
     fontSize: '13px',
     fontWeight: '700',
@@ -775,8 +780,8 @@ const styles = {
     textAlign: 'center'
   },
   previewSummary: {
-    backgroundColor: '#0D0D11',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'var(--admin-surface-2)',
+    border: '1px solid var(--admin-border-subtle)',
     borderRadius: '12px',
     padding: '16px',
     display: 'flex',
@@ -784,43 +789,43 @@ const styles = {
     gap: '10px'
   },
   errorLogBox: {
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
-    border: '1px solid rgba(239, 68, 68, 0.25)',
+    backgroundColor: 'var(--admin-danger-bg)',
+    border: '1px solid var(--admin-danger)',
     borderRadius: '10px',
     padding: '14px'
   },
   errorLogTitle: {
     fontSize: '12px',
     fontWeight: '700',
-    color: '#EF4444',
+    color: 'var(--admin-danger)',
     display: 'block',
     marginBottom: '8px'
   },
   progressContainer: {
-    backgroundColor: '#0D0D11',
+    backgroundColor: 'var(--admin-surface-2)',
     padding: '14px',
     borderRadius: '10px',
-    border: '1px solid rgba(255, 255, 255, 0.08)'
+    border: '1px solid var(--admin-border-subtle)'
   },
   progressBarTrack: {
     width: '100%',
     height: '8px',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'var(--admin-border-subtle)',
     borderRadius: '4px',
     overflow: 'hidden'
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#D4AF37',
+    backgroundColor: 'var(--admin-gold)',
     transition: 'width 0.2s ease'
   },
   cancelBtn: {
     flex: 1,
     padding: '12px',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '8px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '13px',
     fontWeight: '600',
     cursor: 'pointer'
@@ -828,8 +833,8 @@ const styles = {
   confirmBtn: {
     flex: 1,
     padding: '12px',
-    backgroundColor: '#D4AF37',
-    color: '#0D0D10',
+    backgroundColor: 'var(--admin-gold)',
+    color: 'var(--active-pill-text)',
     border: 'none',
     borderRadius: '8px',
     fontSize: '13px',

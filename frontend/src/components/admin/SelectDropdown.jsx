@@ -74,7 +74,7 @@ const SelectDropdown = ({
     <div style={{ position: 'relative', width: '100%' }} ref={containerRef} onKeyDown={handleKeyDown}>
       {label && (
         <label style={styles.label}>
-          {label} {required && <span style={{ color: '#EF4444' }}>*</span>}
+          {label} {required && <span style={{ color: 'var(--admin-danger)' }}>*</span>}
         </label>
       )}
       <button
@@ -82,18 +82,18 @@ const SelectDropdown = ({
         onClick={() => setOpen(!open)}
         style={{
           ...styles.triggerBtn,
-          borderColor: error ? '#EF4444' : open ? '#D4AF37' : 'rgba(255, 255, 255, 0.12)'
+          borderColor: error ? 'var(--admin-danger)' : open ? 'var(--admin-gold)' : 'var(--admin-input-border)'
         }}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span style={{ color: selectedOpt ? '#F9F6F0' : '#A0A0AB', fontWeight: selectedOpt ? '600' : '400' }}>
+        <span style={{ color: selectedOpt ? 'var(--admin-text-primary)' : 'var(--admin-text-muted)', fontWeight: selectedOpt ? '600' : '400' }}>
           {selectedOpt ? selectedOpt.label : placeholder}
         </span>
         <ChevronDown
           size={15}
           style={{
-            color: '#D4AF37',
+            color: 'var(--admin-gold)',
             transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
             transition: 'transform 0.2s ease'
           }}
@@ -104,7 +104,7 @@ const SelectDropdown = ({
         <div style={styles.dropdownMenu} role="listbox">
           {searchable && options.length > 3 && (
             <div style={styles.searchWrapper}>
-              <Search size={14} color="#A0A0AB" style={{ marginRight: '6px' }} />
+              <Search size={14} color="var(--admin-text-muted)" style={{ marginRight: '6px' }} />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -137,17 +137,17 @@ const SelectDropdown = ({
                     style={{
                       ...styles.optionItem,
                       backgroundColor: isSelected
-                        ? 'rgba(212, 175, 55, 0.2)'
+                        ? 'var(--admin-gold-muted)'
                         : isHighlighted
-                        ? 'rgba(255, 255, 255, 0.06)'
+                        ? 'var(--admin-card-hover)'
                         : 'transparent',
-                      color: isSelected ? '#D4AF37' : '#F9F6F0'
+                      color: isSelected ? 'var(--admin-gold)' : 'var(--admin-text-primary)'
                     }}
                     role="option"
                     aria-selected={isSelected}
                   >
                     <span>{opt.label}</span>
-                    {isSelected && <Check size={14} color="#D4AF37" />}
+                    {isSelected && <Check size={14} color="var(--admin-gold)" />}
                   </div>
                 );
               })
@@ -163,7 +163,7 @@ const styles = {
   label: {
     display: 'block',
     fontSize: '11px',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     fontWeight: '600',
     marginBottom: '6px',
     textTransform: 'uppercase',
@@ -172,15 +172,15 @@ const styles = {
   triggerBtn: {
     width: '100%',
     padding: '11px 14px',
-    backgroundColor: '#0D0D11',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '8px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     cursor: 'pointer',
     fontSize: '13px',
-    fontFamily: "'Sora', sans-serif",
+    fontFamily: "var(--font-sans, 'Sora', sans-serif)",
     textAlign: 'left',
     transition: 'all 0.2s ease',
     boxSizing: 'border-box'
@@ -190,28 +190,28 @@ const styles = {
     top: 'calc(100% + 4px)',
     left: 0,
     right: 0,
-    backgroundColor: '#141418',
-    border: '1px solid rgba(212, 175, 55, 0.3)',
+    backgroundColor: 'var(--admin-dropdown-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '10px',
-    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.7)',
-    zIndex: 200,
+    boxShadow: 'var(--admin-shadow-lg)',
+    zIndex: 'var(--z-dropdown, 1000)',
     overflow: 'hidden'
   },
   searchWrapper: {
     display: 'flex',
     alignItems: 'center',
     padding: '8px 12px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-    backgroundColor: '#0D0D11'
+    borderBottom: '1px solid var(--admin-border-subtle)',
+    backgroundColor: 'var(--admin-card-bg)'
   },
   searchInput: {
     width: '100%',
     backgroundColor: 'transparent',
     border: 'none',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '12px',
     outline: 'none',
-    fontFamily: "'Sora', sans-serif"
+    fontFamily: "var(--font-sans, 'Sora', sans-serif)"
   },
   optionList: {
     maxHeight: '200px',
@@ -229,7 +229,7 @@ const styles = {
   noOption: {
     padding: '14px',
     fontSize: '12px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-muted)',
     textAlign: 'center'
   }
 };

@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import PageHeader from '../../components/admin/PageHeader';
 import DataTable from '../../components/admin/DataTable';
 import ActionMenu from '../../components/admin/ActionMenu';
 import ConfirmationModal from '../../components/admin/ConfirmationModal';
-import { Eye, Mail, Trash2, MessageSquare, Clock, User } from 'lucide-react';
+import { Eye, Trash2, MessageSquare, Clock, User } from 'lucide-react';
+import { useToast } from '../../components/common/Toast/useToast';
+import { messageAPI } from '../../utils/api';
 
 const formatRelativeTime = (timestamp) => {
   if (!timestamp) return 'Recently';
@@ -19,11 +21,12 @@ const formatRelativeTime = (timestamp) => {
   if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
   const diffInDays = Math.floor(diffInHours / 24);
   if (diffInDays === 1) return 'Yesterday';
-  if (diffInDays < 7) return `${diffInDays} days ago`;
+  if (diffInDays < 7) return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
 const MessagesManagement = () => {
+  const toast = useToast();
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -36,23 +39,22 @@ const MessagesManagement = () => {
   const [itemToDelete, setItemToDelete] = useState(null); // { type: 'thread' | 'message', target: obj }
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+
+
   const fetchMessages = async () => {
     setLoading(true);
     try {
-      const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
-      const adminToken = localStorage.getItem('adminToken');
-      const response = await fetch(`${API_BASE}/api/messages`, {
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      const data = await response.json();
-      if (data.success && Array.isArray(data.messages)) {
+      const data = await messageAPI.getAll();
+      if (data && data.success && Array.isArray(data.messages)) {
         setMessages(data.messages);
+      } else if (Array.isArray(data)) {
+        setMessages(data);
+      } else {
+        setMessages([]);
       }
     } catch (err) {
       console.error('Error fetching messages:', err);
+      toast.error('Failed to fetch messages');
     } finally {
       setLoading(false);
     }
@@ -122,28 +124,20 @@ const MessagesManagement = () => {
     if (!itemToDelete) return;
     setDeleteLoading(true);
     try {
-      const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
-      const adminToken = localStorage.getItem('adminToken');
-
       if (itemToDelete.type === 'message') {
         const msgId = itemToDelete.target._id || itemToDelete.target.id;
-        await fetch(`${API_BASE}/api/messages/${msgId}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${adminToken}` }
-        });
+        await messageAPI.delete(msgId);
+        toast.success('Message deleted successfully', 'Deleted');
       } else if (itemToDelete.type === 'thread') {
         const msgs = itemToDelete.target.rawMessages || [];
-        await Promise.all(msgs.map(m => 
-          fetch(`${API_BASE}/api/messages/${m._id || m.id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${adminToken}` }
-          })
-        ));
+        await Promise.all(msgs.map(m => messageAPI.delete(m._id || m.id)));
+        toast.success('Conversation thread deleted', 'Deleted');
       }
 
       await fetchMessages();
     } catch (err) {
       console.error('Error deleting message(s):', err);
+      toast.error('Error deleting message');
     } finally {
       setDeleteLoading(false);
       setDeleteModalOpen(false);
@@ -151,13 +145,7 @@ const MessagesManagement = () => {
     }
   };
 
-  const getMailtoUrl = (email, name, subject) => {
-    const safeEmail = email || '';
-    const safeName = name || '';
-    const safeSubject = subject ? `Re: ${subject}` : 'Re: Your SRILU FashionHub Inquiry';
-    const bodyText = `Hello ${safeName},\n\nThank you for contacting SRILU FashionHub.\n\n`;
-    return `mailto:${safeEmail}?subject=${encodeURIComponent(safeSubject)}&body=${encodeURIComponent(bodyText)}`;
-  };
+
 
   const columns = [
     {
@@ -165,8 +153,8 @@ const MessagesManagement = () => {
       accessor: 'email',
       render: (row) => (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontWeight: '600', color: '#F9F6F0' }}>{row.latestName}</span>
-          <span style={{ fontSize: '11px', color: '#A0A0AB' }}>{row.email}</span>
+          <span style={{ fontWeight: '600', color: 'var(--admin-text-primary)' }}>{row.latestName}</span>
+          <span style={{ fontSize: '11px', color: 'var(--admin-text-secondary)' }}>{row.email}</span>
         </div>
       ),
       sortable: true
@@ -178,18 +166,18 @@ const MessagesManagement = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{
             padding: '3px 8px',
-            backgroundColor: 'rgba(212, 175, 55, 0.12)',
-            border: '1px solid rgba(212, 175, 55, 0.3)',
+            backgroundColor: 'var(--admin-gold-muted)',
+            border: '1px solid var(--admin-border-gold)',
             borderRadius: '12px',
-            color: '#D4AF37',
+            color: 'var(--admin-gold)',
             fontSize: '11px',
             fontWeight: '700',
             fontFamily: 'monospace'
           }}>
             {row.totalMessages} {row.totalMessages === 1 ? 'Message' : 'Messages'}
           </span>
-          <span style={{ fontSize: '11px', color: '#A0A0AB', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Clock size={12} color="#A0A0AB" />
+          <span style={{ fontSize: '11px', color: 'var(--admin-text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <Clock size={12} color="var(--admin-text-secondary)" />
             {row.lastActivityText}
           </span>
         </div>
@@ -201,10 +189,10 @@ const MessagesManagement = () => {
       accessor: 'latestSubject',
       render: (row) => (
         <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '320px' }}>
-          <span style={{ fontWeight: '600', color: '#D4AF37', fontSize: '13px' }}>{row.latestSubject}</span>
+          <span style={{ fontWeight: '600', color: 'var(--admin-gold)', fontSize: '13px' }}>{row.latestSubject}</span>
           <span style={{
             fontSize: '12px',
-            color: '#A0A0AB',
+            color: 'var(--admin-text-secondary)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis'
@@ -223,19 +211,12 @@ const MessagesManagement = () => {
           items={[
             {
               label: 'View Conversation',
-              icon: <Eye size={14} color="#D4AF37" />,
+              icon: <Eye size={14} color="var(--admin-gold)" />,
               onClick: () => { setSelectedThread(row); setModalOpen(true); }
             },
             {
-              label: 'Reply via Email',
-              icon: <Mail size={14} color="#D4AF37" />,
-              onClick: () => {
-                window.location.href = getMailtoUrl(row.email, row.latestName, row.latestSubject);
-              }
-            },
-            {
               label: 'Delete Conversation',
-              icon: <Trash2 size={14} color="#EF4444" />,
+              icon: <Trash2 size={14} color="var(--admin-danger)" />,
               danger: true,
               onClick: () => {
                 setItemToDelete({ type: 'thread', target: row });
@@ -353,12 +334,6 @@ const MessagesManagement = () => {
                 >
                   Delete Entire Conversation
                 </button>
-                <a
-                  href={getMailtoUrl(selectedThread.email, selectedThread.latestName, selectedThread.latestSubject)}
-                  style={styles.primaryBtn}
-                >
-                  ✉ Reply via Email
-                </a>
               </div>
             </div>
           </div>
@@ -412,12 +387,12 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 1000,
+    zIndex: 'var(--z-modal, 9999)',
     padding: '20px'
   },
   modalContent: {
-    backgroundColor: '#16161A',
-    border: '1px solid rgba(212, 175, 55, 0.35)',
+    backgroundColor: 'var(--admin-modal-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '14px',
     width: '100%',
     maxWidth: '640px',
@@ -426,52 +401,52 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
-    boxShadow: '0 24px 48px rgba(0, 0, 0, 0.9)'
+    boxShadow: 'var(--admin-shadow-lg)'
   },
   modalHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '20px 24px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-    backgroundColor: '#111115',
+    borderBottom: '1px solid var(--admin-border-subtle)',
+    backgroundColor: 'var(--admin-card-bg)',
     flexShrink: 0
   },
   avatarCircle: {
     width: '40px',
     height: '40px',
     borderRadius: '50%',
-    backgroundColor: 'rgba(212, 175, 55, 0.12)',
-    border: '1px solid rgba(212, 175, 55, 0.3)',
+    backgroundColor: 'var(--admin-gold-muted)',
+    border: '1px solid var(--admin-border-gold)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0
   },
   modalTitle: {
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '18px',
     fontWeight: '600',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     margin: 0
   },
   modalEmail: {
     fontSize: '12px',
-    color: '#A0A0AB'
+    color: 'var(--admin-text-secondary)'
   },
   countBadge: {
     padding: '4px 10px',
-    backgroundColor: 'rgba(212, 175, 55, 0.15)',
-    border: '1px solid rgba(212, 175, 55, 0.3)',
+    backgroundColor: 'var(--admin-gold-muted)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '12px',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     fontSize: '11px',
     fontWeight: '700'
   },
   modalClose: {
     background: 'none',
     border: 'none',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-muted)',
     fontSize: '24px',
     cursor: 'pointer',
     padding: '0 4px',
@@ -490,7 +465,7 @@ const styles = {
     fontSize: '11px',
     textTransform: 'uppercase',
     letterSpacing: '1px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     marginBottom: '12px',
     fontWeight: '600',
     flexShrink: 0
@@ -506,8 +481,8 @@ const styles = {
     paddingRight: '6px'
   },
   messageCard: {
-    backgroundColor: '#0D0D11',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-border-subtle)',
     borderRadius: '10px',
     padding: '16px',
     display: 'flex',
@@ -522,11 +497,11 @@ const styles = {
   msgSender: {
     fontSize: '13px',
     fontWeight: '600',
-    color: '#F9F6F0'
+    color: 'var(--admin-text-primary)'
   },
   msgDate: {
     fontSize: '11px',
-    color: '#A0A0AB'
+    color: 'var(--admin-text-secondary)'
   },
   singleDeleteBtn: {
     background: 'none',
@@ -538,11 +513,11 @@ const styles = {
   },
   msgSubject: {
     fontSize: '12px',
-    color: '#D4AF37'
+    color: 'var(--admin-gold)'
   },
   msgText: {
     fontSize: '13px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     lineHeight: '1.6',
     whiteSpace: 'pre-wrap',
     margin: 0
@@ -553,13 +528,13 @@ const styles = {
     alignItems: 'center',
     marginTop: '16px',
     paddingTop: '16px',
-    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+    borderTop: '1px solid var(--admin-border-subtle)',
     flexShrink: 0
   },
   primaryBtn: {
     padding: '10px 20px',
-    backgroundColor: '#D4AF37',
-    color: '#0D0D0E',
+    backgroundColor: 'var(--admin-gold)',
+    color: 'var(--active-pill-text)',
     borderRadius: '6px',
     fontSize: '12px',
     fontWeight: '700',
@@ -570,9 +545,9 @@ const styles = {
   },
   dangerBtn: {
     padding: '9px 16px',
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    color: '#EF4444',
-    border: '1px solid rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'var(--admin-danger-bg)',
+    color: 'var(--admin-danger)',
+    border: '1px solid var(--admin-danger)',
     borderRadius: '6px',
     fontSize: '12px',
     fontWeight: '600',

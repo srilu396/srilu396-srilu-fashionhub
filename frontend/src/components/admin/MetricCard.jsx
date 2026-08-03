@@ -22,9 +22,9 @@ const MetricCard = ({ title, value, change, changeType = 'positive', icon, subti
         {change && (
           <span style={{
             ...styles.changeBadge,
-            backgroundColor: isPositive ? 'var(--admin-success-bg, rgba(16, 185, 129, 0.12))' : 'var(--admin-danger-bg, rgba(239, 68, 68, 0.12))',
-            color: isPositive ? '#10B981' : '#EF4444',
-            borderColor: isPositive ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+            backgroundColor: isPositive ? 'var(--admin-success-bg)' : 'var(--admin-danger-bg)',
+            color: isPositive ? 'var(--admin-success)' : 'var(--admin-danger)',
+            borderColor: isPositive ? 'var(--admin-success)' : 'var(--admin-danger)'
           }}>
             {isPositive ? '↑' : '↓'} {change}
           </span>
@@ -37,8 +37,8 @@ const MetricCard = ({ title, value, change, changeType = 'positive', icon, subti
 
 const styles = {
   card: {
-    backgroundColor: 'var(--admin-card-bg, #121217)',
-    border: '1px solid var(--admin-border-gold, rgba(212, 175, 55, 0.2))',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '12px',
     padding: '20px 22px',
     display: 'flex',
@@ -59,14 +59,14 @@ const styles = {
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: '1px',
-    color: 'var(--admin-text-muted, #6B7280)'
+    color: 'var(--admin-text-muted)'
   },
   iconContainer: {
     width: '36px',
     height: '36px',
     borderRadius: '8px',
-    backgroundColor: 'var(--admin-gold-muted, rgba(212, 175, 55, 0.1))',
-    color: 'var(--admin-gold, #D4AF37)',
+    backgroundColor: 'var(--admin-gold-muted)',
+    color: 'var(--admin-gold)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -78,7 +78,7 @@ const styles = {
   value: {
     fontSize: '26px',
     fontWeight: '700',
-    color: 'var(--admin-text-primary, #F9F8F6)',
+    color: 'var(--admin-text-primary)',
     fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     letterSpacing: '0.5px'
   },
@@ -96,7 +96,7 @@ const styles = {
   },
   subtitle: {
     fontSize: '11px',
-    color: 'var(--admin-text-muted, #6B7280)'
+    color: 'var(--admin-text-muted)'
   }
 };
 

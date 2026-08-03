@@ -6,6 +6,7 @@ import StatusBadge from '../../components/admin/StatusBadge';
 import ActionMenu from '../../components/admin/ActionMenu';
 import Drawer from '../../components/admin/Drawer';
 import { chatAPI } from '../../utils/api';
+import { useToast } from '../../components/common/Toast/useToast';
 import { 
   User, ShoppingBag, Tag, MessageSquare, Send, CheckCheck, 
   Clock, Eye, UserCheck, UserX, TicketPercent, Calendar, 
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react';
 
 const CustomersManagement = () => {
+  const toast = useToast();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -43,6 +45,7 @@ const CustomersManagement = () => {
       }
     } catch (err) {
       console.error('Error fetching customers:', err);
+      toast.error('Failed to load customer list.');
     } finally {
       setLoading(false);
     }
@@ -110,9 +113,11 @@ const CustomersManagement = () => {
       if (data.success && data.chatMessage) {
         setChatMessages(prev => [...prev, data.chatMessage]);
         setChatInput('');
+        toast.success('Message sent to client.', 'Concierge Response Sent');
       }
     } catch (err) {
       console.error('Error sending chat message:', err);
+      toast.error('Failed to send message.');
     } finally {
       setChatSending(false);
     }
@@ -142,9 +147,13 @@ const CustomersManagement = () => {
           const currentId = String(c._id || c.id || '');
           return currentId === targetId ? { ...c, status: newStatus } : c;
         }));
+        toast.info(`Customer status updated to ${newStatus}.`, 'Status Updated');
+      } else {
+        toast.error(data.message || 'Failed to update customer status.');
       }
     } catch (err) {
       console.error('Error updating customer status:', err);
+      toast.error('Network error updating status.');
     }
   };
 
@@ -158,10 +167,10 @@ const CustomersManagement = () => {
             {((row.firstName || row.username || 'C').charAt(0)).toUpperCase()}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontWeight: '600', color: '#F9F6F0' }}>
+            <span style={{ fontWeight: '600', color: 'var(--admin-text-primary)' }}>
               {row.firstName ? `${row.firstName} ${row.lastName || ''}` : row.username}
             </span>
-            <span style={{ fontSize: '12px', color: '#A0A0AB' }}>{row.email}</span>
+            <span style={{ fontSize: '12px', color: 'var(--admin-text-secondary)' }}>{row.email}</span>
           </div>
         </div>
       ),
@@ -170,13 +179,13 @@ const CustomersManagement = () => {
     {
       header: 'Username',
       accessor: 'username',
-      render: (row) => <span style={{ color: '#D4AF37', fontSize: '13px' }}>@{row.username}</span>
+      render: (row) => <span style={{ color: 'var(--admin-gold)', fontSize: '13px' }}>@{row.username}</span>
     },
     {
       header: 'Role',
       accessor: 'role',
       render: (row) => (
-        <span style={{ textTransform: 'capitalize', color: '#A0A0AB', fontSize: '12px' }}>
+        <span style={{ textTransform: 'capitalize', color: 'var(--admin-text-secondary)', fontSize: '12px' }}>
           {row.role || 'customer'}
         </span>
       )
@@ -385,7 +394,7 @@ const CustomersManagement = () => {
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#A0A0AB' }}>
                         <span><Clock size={12} style={{ display: 'inline', marginRight: '4px' }} />{new Date(ord.createdAt || Date.now()).toLocaleDateString()}</span>
-                        <span style={{ color: '#F9F6F0', fontWeight: '700', fontSize: '13px' }}>₹{ord.totalAmount?.toLocaleString('en-IN')}</span>
+                        <span style={{ color: 'var(--admin-text-primary)', fontWeight: '700', fontSize: '13px' }}>₹{ord.totalAmount?.toLocaleString('en-IN')}</span>
                       </div>
                     </div>
                   ))
@@ -488,8 +497,8 @@ const styles = {
   },
   profileHeaderCard: {
     padding: '16px',
-    backgroundColor: '#0D0D11',
-    border: '1px solid rgba(212, 175, 55, 0.3)',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '12px',
     display: 'flex',
     alignItems: 'center',
@@ -499,9 +508,9 @@ const styles = {
     width: '46px',
     height: '46px',
     borderRadius: '50%',
-    backgroundColor: 'rgba(212, 175, 55, 0.2)',
-    color: '#D4AF37',
-    border: '1px solid rgba(212, 175, 55, 0.4)',
+    backgroundColor: 'var(--admin-gold-muted)',
+    color: 'var(--admin-gold)',
+    border: '1px solid var(--admin-border-gold)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -512,8 +521,8 @@ const styles = {
     margin: 0,
     fontSize: '16px',
     fontWeight: '700',
-    color: '#F9F6F0',
-    fontFamily: "'Playfair Display', serif"
+    color: 'var(--admin-text-primary)',
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)"
   },
   profileMetaRow: {
     display: 'flex',
@@ -523,7 +532,7 @@ const styles = {
   },
   metaBadge: {
     fontSize: '11px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     display: 'inline-flex',
     alignItems: 'center',
     gap: '4px'
@@ -531,7 +540,7 @@ const styles = {
   tabBar: {
     display: 'flex',
     gap: '6px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+    borderBottom: '1px solid var(--admin-border-subtle)',
     paddingBottom: '12px'
   },
   tabBtn: {
@@ -539,7 +548,7 @@ const styles = {
     backgroundColor: 'transparent',
     border: '1px solid transparent',
     borderRadius: '6px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     fontSize: '12px',
     fontWeight: '500',
     cursor: 'pointer',
@@ -549,14 +558,14 @@ const styles = {
     transition: 'all 0.2s ease'
   },
   tabBtnActive: {
-    backgroundColor: '#0D0D11',
-    border: '1px solid rgba(212, 175, 55, 0.4)',
-    color: '#D4AF37',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-border-gold)',
+    color: 'var(--admin-gold)',
     fontWeight: '600'
   },
   cardBox: {
-    backgroundColor: '#0D0D11',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-border-subtle)',
     borderRadius: '10px',
     padding: '16px'
   },
@@ -569,7 +578,7 @@ const styles = {
   cardHeader: {
     fontSize: '11px',
     fontWeight: '700',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     textTransform: 'uppercase',
     letterSpacing: '0.8px'
   },
@@ -580,40 +589,40 @@ const styles = {
   },
   label: {
     fontSize: '10px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     textTransform: 'uppercase',
     display: 'block',
     marginBottom: '2px'
   },
   val: {
     fontSize: '13px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontWeight: '600'
   },
   statMini: {
-    backgroundColor: '#141419',
+    backgroundColor: 'var(--admin-surface-2)',
     padding: '10px 12px',
     borderRadius: '8px',
-    border: '1px solid rgba(255,255,255,0.04)'
+    border: '1px solid var(--admin-border-subtle)'
   },
   statLabel: {
     fontSize: '10px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     textTransform: 'uppercase',
     display: 'block'
   },
   statVal: {
     fontSize: '16px',
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontWeight: '700',
-    color: '#D4AF37'
+    color: 'var(--admin-gold)'
   },
   emptyState: {
     padding: '30px',
     textAlign: 'center',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-muted)',
     fontSize: '13px',
-    border: '1px dashed rgba(255,255,255,0.1)',
+    border: '1px dashed var(--admin-border-subtle)',
     borderRadius: '10px',
     display: 'flex',
     flexDirection: 'column',
@@ -625,8 +634,8 @@ const styles = {
     gap: '10px'
   },
   couponCard: {
-    backgroundColor: '#141419',
-    border: '1px solid rgba(212, 175, 55, 0.2)',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '8px',
     padding: '12px',
     display: 'flex',
@@ -636,16 +645,16 @@ const styles = {
   couponCode: {
     fontSize: '13px',
     fontWeight: '700',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     letterSpacing: '0.5px'
   },
   couponDesc: {
     fontSize: '11px',
-    color: '#A0A0AB'
+    color: 'var(--admin-text-secondary)'
   },
   couponStatus: {
     fontSize: '10px',
-    color: '#10B981',
+    color: 'var(--admin-success)',
     fontWeight: '600',
     alignSelf: 'flex-start',
     marginTop: '2px'
@@ -655,9 +664,9 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     height: '420px',
-    backgroundColor: '#0A0A0D',
+    backgroundColor: 'var(--admin-card-bg)',
     borderRadius: '10px',
-    border: '1px solid rgba(212, 175, 55, 0.2)',
+    border: '1px solid var(--admin-border-gold)',
     overflow: 'hidden'
   },
   chatFeed: {
@@ -688,26 +697,26 @@ const styles = {
     lineHeight: '1.4'
   },
   chatBubbleAdmin: {
-    backgroundColor: '#1C1917',
-    border: '1px solid rgba(212, 175, 55, 0.4)',
-    color: '#F9F6F0',
+    backgroundColor: 'var(--admin-gold-muted)',
+    border: '1px solid var(--admin-border-gold)',
+    color: 'var(--admin-text-primary)',
     borderBottomRightRadius: '2px'
   },
   chatBubbleClient: {
-    backgroundColor: '#18181B',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    color: '#E4E4E7',
+    backgroundColor: 'var(--admin-surface-2)',
+    border: '1px solid var(--admin-border-subtle)',
+    color: 'var(--admin-text-primary)',
     borderBottomLeftRadius: '2px'
   },
   chatSender: {
     fontSize: '10px',
     fontWeight: '700',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     marginBottom: '2px',
     textTransform: 'uppercase'
   },
   chatText: {
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     whiteSpace: 'pre-wrap'
   },
   chatMeta: {
@@ -716,23 +725,23 @@ const styles = {
     justifyContent: 'flex-end',
     gap: '4px',
     fontSize: '10px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     marginTop: '4px'
   },
   chatInputRow: {
     padding: '12px',
-    backgroundColor: '#121217',
-    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'var(--admin-card-bg)',
+    borderTop: '1px solid var(--admin-border-subtle)',
     display: 'flex',
     gap: '8px'
   },
   chatInputField: {
     flex: 1,
     padding: '10px 14px',
-    backgroundColor: '#070709',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '20px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '13px',
     outline: 'none'
   },
@@ -740,8 +749,8 @@ const styles = {
     width: '38px',
     height: '38px',
     borderRadius: '50%',
-    backgroundColor: '#D4AF37',
-    color: '#0D0D0E',
+    backgroundColor: 'var(--admin-gold)',
+    color: 'var(--active-pill-text)',
     border: 'none',
     display: 'flex',
     alignItems: 'center',

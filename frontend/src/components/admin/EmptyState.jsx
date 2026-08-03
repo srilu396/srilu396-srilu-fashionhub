@@ -37,39 +37,39 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     textAlign: 'center',
-    backgroundColor: '#141417',
-    border: '1px solid rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-border-subtle)',
     borderRadius: '10px'
   },
   iconCircle: {
     width: '56px',
     height: '56px',
     borderRadius: '50%',
-    backgroundColor: 'rgba(212, 175, 55, 0.1)',
-    border: '1px solid rgba(212, 175, 55, 0.25)',
+    backgroundColor: 'var(--admin-gold-muted)',
+    border: '1px solid var(--admin-border-gold)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: '16px'
   },
   title: {
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '18px',
     fontWeight: '600',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     margin: '0 0 8px 0'
   },
   description: {
     fontSize: '13px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     maxWidth: '360px',
     margin: '0 0 20px 0',
     lineHeight: '1.5'
   },
   actionBtn: {
     padding: '10px 20px',
-    backgroundColor: '#D4AF37',
-    color: '#0D0D0E',
+    backgroundColor: 'var(--admin-gold)',
+    color: 'var(--active-pill-text)',
     border: 'none',
     borderRadius: '6px',
     fontSize: '13px',

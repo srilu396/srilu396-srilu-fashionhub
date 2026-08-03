@@ -309,19 +309,20 @@ const styles = {
     gap: '24px'
   },
   formSection: {
-    backgroundColor: '#141417',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '10px',
     padding: '24px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '16px'
+    gap: '16px',
+    boxShadow: 'var(--admin-shadow-sm)'
   },
   sectionHeading: {
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '16px',
     fontWeight: '600',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     margin: '0 0 4px 0'
   },
   labelRow: {
@@ -332,7 +333,7 @@ const styles = {
   genBtn: {
     background: 'none',
     border: 'none',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     fontSize: '11px',
     fontWeight: '600',
     cursor: 'pointer'
@@ -347,27 +348,26 @@ const styles = {
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: '0.8px',
-    color: '#D4AF37'
+    color: 'var(--admin-gold)'
   },
   input: {
     padding: '11px 14px',
-    backgroundColor: '#0D0D0E',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '6px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '13px',
     outline: 'none'
   },
   dateInput: {
     padding: '11px 14px',
-    backgroundColor: '#0D0D0E',
-    border: '1px solid rgba(212, 175, 55, 0.3)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '8px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '13px',
-    fontFamily: "'Sora', sans-serif",
+    fontFamily: "var(--font-sans, 'Sora', sans-serif)",
     outline: 'none',
-    colorScheme: 'dark',
     transition: 'all 0.2s ease',
     cursor: 'pointer'
   },
@@ -376,11 +376,11 @@ const styles = {
     alignItems: 'center',
     gap: '8px',
     fontSize: '13px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     cursor: 'pointer'
   },
   checkbox: {
-    accentColor: '#D4AF37',
+    accentColor: 'var(--admin-gold)',
     width: '15px',
     height: '15px'
   },
@@ -391,8 +391,8 @@ const styles = {
   },
   primaryBtn: {
     padding: '12px 24px',
-    backgroundColor: '#D4AF37',
-    color: '#0D0D0E',
+    backgroundColor: 'var(--admin-gold)',
+    color: 'var(--active-pill-text)',
     border: 'none',
     borderRadius: '6px',
     fontSize: '13px',
@@ -401,9 +401,9 @@ const styles = {
   },
   secondaryBtn: {
     padding: '12px 20px',
-    backgroundColor: 'transparent',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    color: '#F9F6F0',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
+    color: 'var(--admin-text-primary)',
     borderRadius: '6px',
     fontSize: '13px',
     fontWeight: '500',
@@ -414,21 +414,21 @@ const styles = {
     top: '90px'
   },
   previewHeader: {
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '14px',
     fontWeight: '600',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-muted)',
     margin: '0 0 12px 0',
     textTransform: 'uppercase',
     letterSpacing: '1px'
   },
   ticketCard: {
-    backgroundColor: '#141417',
-    border: '1px dashed rgba(212, 175, 55, 0.4)',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px dashed var(--admin-border-gold)',
     borderRadius: '10px',
     padding: '24px',
     textAlign: 'center',
-    boxShadow: '0 12px 24px rgba(0, 0, 0, 0.4)'
+    boxShadow: 'var(--admin-shadow-sm)'
   },
   ticketTop: {
     display: 'flex',
@@ -438,7 +438,7 @@ const styles = {
   },
   ticketTag: {
     fontSize: '10px',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     fontWeight: '700',
     letterSpacing: '1.5px'
   },
@@ -446,19 +446,19 @@ const styles = {
     fontFamily: 'monospace',
     fontSize: '24px',
     fontWeight: '700',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     margin: 0,
     letterSpacing: '3px'
   },
   ticketDiscount: {
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '28px',
     fontWeight: '700',
-    color: '#D4AF37'
+    color: 'var(--admin-gold)'
   },
   ticketDottedLine: {
     height: '1px',
-    borderTop: '1px stroke rgba(255, 255, 255, 0.1)',
+    borderTop: '1px stroke var(--admin-border-subtle)',
     margin: '16px 0'
   },
   ticketBottom: {
@@ -468,7 +468,7 @@ const styles = {
   },
   ticketDetail: {
     fontSize: '11px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     margin: 0
   }
 };

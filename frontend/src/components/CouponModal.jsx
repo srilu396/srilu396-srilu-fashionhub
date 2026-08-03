@@ -64,7 +64,8 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backdropFilter: 'blur(12px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -73,15 +74,15 @@ const styles = {
     animation: 'fadeIn 0.2s ease-out'
   },
   modalContent: {
-    backgroundColor: '#16161A',
-    border: '1px solid rgba(212, 175, 55, 0.4)',
+    backgroundColor: 'var(--admin-modal-bg, var(--admin-card-bg))',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '16px',
     width: '100%',
     maxWidth: '920px',
     maxHeight: '90vh',
     overflowY: 'auto',
     padding: '28px',
-    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.9)'
+    boxShadow: 'var(--admin-shadow-lg)'
   },
   modalHeader: {
     display: 'flex',
@@ -89,28 +90,28 @@ const styles = {
     alignItems: 'center',
     marginBottom: '20px',
     paddingBottom: '16px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+    borderBottom: '1px solid var(--admin-border-subtle)'
   },
   modalMeta: {
     fontSize: '10px',
     textTransform: 'uppercase',
     letterSpacing: '1.5px',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     fontWeight: '700',
     display: 'block',
     marginBottom: '2px'
   },
   modalTitle: {
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '20px',
     fontWeight: '700',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     margin: 0
   },
   closeButton: {
     background: 'none',
     border: 'none',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     fontSize: '28px',
     cursor: 'pointer',
     padding: '0 8px',

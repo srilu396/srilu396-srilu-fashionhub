@@ -4,11 +4,13 @@ import { useDispatch, useSelector } from 'react-redux';
 import { ShoppingCart, Star, Heart } from 'lucide-react';
 import { addToCart } from '../redux/slices/cartSlice';
 import { addToWishlist, removeFromWishlist } from '../redux/slices/wishlistSlice';
+import { useToast } from './common/Toast/useToast';
 
 const ProductCard = ({ product }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const toast = useToast();
 
   const { items: wishlistItems } = useSelector((state) => state.wishlist || { items: [] });
   
@@ -30,7 +32,7 @@ const ProductCard = ({ product }) => {
 
     const userToken = localStorage.getItem('userToken');
     if (!userToken) {
-      alert('Please log in to add items to cart');
+      toast.warning('Please log in to add items to cart', 'Authentication Required');
       navigate('/login');
       return;
     }
@@ -47,7 +49,7 @@ const ProductCard = ({ product }) => {
     };
 
     dispatch(addToCart({ product: cartProduct, quantity: 1 }))
-      .then(() => alert(`"${product.name}" added to cart!`))
+      .then(() => toast.success(`"${product.name}" added to cart!`, 'Cart Updated'))
       .catch((err) => console.error('Cart add error:', err));
   };
 
@@ -57,13 +59,14 @@ const ProductCard = ({ product }) => {
 
     const userToken = localStorage.getItem('userToken');
     if (!userToken) {
-      alert('Please log in to manage your wishlist');
+      toast.warning('Please log in to manage your wishlist', 'Authentication Required');
       navigate('/login');
       return;
     }
 
     if (isWishlisted) {
       dispatch(removeFromWishlist(id));
+      toast.info(`"${product.name}" removed from wishlist`);
     } else {
       const wishlistProduct = {
         _id: id,
@@ -75,6 +78,7 @@ const ProductCard = ({ product }) => {
         rating: product.rating || 4.8
       };
       dispatch(addToWishlist(wishlistProduct));
+      toast.success(`"${product.name}" added to wishlist!`, 'Wishlist Saved');
     }
   };
 

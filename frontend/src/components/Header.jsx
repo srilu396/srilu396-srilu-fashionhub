@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { ShoppingBag, Search, User, Menu, X, Heart, Package, Shield } from 'lucide-react';
+import Logo from './common/Logo';
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -40,17 +41,12 @@ const Header = () => {
     <header style={{ position: 'sticky', top: 0, zIndex: 100 }}>
       <nav className="navbar">
         {/* Brand */}
-        <Link to="/" className="nav-brand">
-          <span className="nav-brand-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-              <polyline points="9 22 9 12 15 12 15 22"/>
-            </svg>
-          </span>
-          <span className="nav-brand-name">
-            Srilu<span>FashionHub</span>
-          </span>
-        </Link>
+        <Logo 
+          variant="full"
+          size="sm"
+          subtitle="FASHIONHUB"
+          to="/"
+        />
 
         {/* Desktop links */}
         <ul className="nav-links">

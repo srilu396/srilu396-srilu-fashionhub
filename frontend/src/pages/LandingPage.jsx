@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import Logo from '../components/common/Logo';
 import { 
   Sparkles, 
   ShieldCheck, 
@@ -26,6 +27,7 @@ import {
   Check
 } from 'lucide-react';
 import { vipAPI } from '../utils/api';
+import { useToast } from '../components/common/Toast/useToast';
 import './LandingPage.css';
 
 const HERO_SLIDES = [
@@ -135,6 +137,7 @@ const EXHIBITION_SCENES = [
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   
   // State management
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -150,7 +153,6 @@ const LandingPage = () => {
     message: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState('');
 
   // Newsletter State
   const [newsletterEmail, setNewsletterEmail] = useState('');
@@ -233,7 +235,6 @@ const LandingPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setSubmitStatus('');
     try {
       const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
       const response = await fetch(`${API_BASE}/api/messages`, {
@@ -245,7 +246,7 @@ const LandingPage = () => {
       });
       const result = await response.json();
       if (result.success || response.ok) {
-        setSubmitStatus('success');
+        toast.success('Message submitted successfully. Our concierge will contact you shortly.', 'Inquiry Sent');
         setFormData({
           name: '',
           email: '',
@@ -253,11 +254,11 @@ const LandingPage = () => {
           message: ''
         });
       } else {
-        setSubmitStatus('error');
+        toast.error(result.message || 'Failed to send message. Please check connection and try again.', 'Submission Failed');
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      setSubmitStatus('error');
+      toast.error('Failed to send message. Please check connection and try again.', 'Submission Failed');
     } finally {
       setIsSubmitting(false);
     }
@@ -272,12 +273,14 @@ const LandingPage = () => {
     
     const trimmedEmail = (newsletterEmail || '').trim();
     if (!trimmedEmail) {
+      toast.validation('Please enter your email address.', 'Email Required');
       setNewsletterError('Please enter your email address.');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
+      toast.validation('Please enter a valid email address.', 'Invalid Email');
       setNewsletterError('Please enter a valid email address.');
       return;
     }
@@ -286,16 +289,27 @@ const LandingPage = () => {
     try {
       const res = await vipAPI.subscribe(trimmedEmail);
       if (res.alreadySubscribed) {
+        localStorage.setItem('isVipSubscriber', 'true');
+        localStorage.setItem('vipEmail', trimmedEmail);
+        toast.info('This email is already a distinguished member of Club Privé.', 'Already Subscribed');
         setNewsletterError('This email is already a distinguished member of Club Privé.');
       } else if (res.success) {
+        localStorage.setItem('isVipSubscriber', 'true');
+        localStorage.setItem('vipEmail', trimmedEmail);
+        toast.success('Welcome to the SRILU private circle.', 'VIP Subscription Confirmed');
         setNewsletterSubscribed(true);
         setVipSuccessModalOpen(true);
         setNewsletterEmail('');
+        setTimeout(() => {
+          setNewsletterSubscribed(false);
+        }, 3500);
       } else {
+        toast.error(res.message || 'Subscription failed. Please try again.');
         setNewsletterError(res.message || 'Subscription failed. Please try again.');
       }
     } catch (err) {
       console.error('VIP Subscription Error:', err);
+      toast.error('Network error. Please try again.');
       setNewsletterError('Network error. Please try again.');
     } finally {
       setVipSubmitting(false);
@@ -310,12 +324,8 @@ const LandingPage = () => {
       <header className={`luxury-navbar ${scrolled ? 'scrolled' : ''}`}>
         <div className="navbar-container">
           {/* Left: Brand Logo */}
-          <div className="navbar-brand" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <span className="brand-logo-mark">S</span>
-            <div className="brand-title-wrap">
-              <span className="brand-name">SRILU FASHION HUB</span>
-              <span className="brand-tagline">PARIS • MUMBAI • NEW YORK</span>
-            </div>
+          <div className="navbar-brand" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ cursor: 'pointer' }}>
+            <Logo variant="full" size="lg" mode="gold" subtitle="FASHIONHUB" />
           </div>
 
           {/* Center: Navigation Links */}
@@ -791,18 +801,6 @@ const LandingPage = () => {
               Reach out to our personal styling team for custom appointments, bridal inquiries, or assistance.
             </p>
 
-            {submitStatus === 'success' && (
-              <div className="status-banner success">
-                <CheckCircle2 size={18} />
-                <span>Message submitted successfully. Our concierge will contact you shortly.</span>
-              </div>
-            )}
-            {submitStatus === 'error' && (
-              <div className="status-banner error">
-                <span>Failed to send message. Please check connection and try again.</span>
-              </div>
-            )}
-
             <form className="concierge-form" onSubmit={handleSubmit}>
               <div className="form-row">
                 <input 
@@ -861,7 +859,11 @@ const LandingPage = () => {
                   type="email" 
                   placeholder="Enter your private email address..." 
                   value={newsletterEmail}
-                  onChange={(e) => { setNewsletterEmail(e.target.value); setNewsletterError(''); }}
+                  onChange={(e) => { 
+                    setNewsletterEmail(e.target.value); 
+                    setNewsletterError(''); 
+                    if (newsletterSubscribed) setNewsletterSubscribed(false);
+                  }}
                   disabled={vipSubmitting}
                   autoComplete="email"
                 />
@@ -911,9 +913,8 @@ const LandingPage = () => {
       <footer className="luxury-footer">
         <div className="footer-top">
           <div className="footer-brand-col">
-            <div className="footer-logo">
-              <span className="logo-symbol">S</span>
-              <span className="logo-text">SRILU FASHION HUB</span>
+            <div className="footer-logo" style={{ marginBottom: '12px' }}>
+              <Logo variant="full" size="lg" mode="gold" subtitle="LUXURY ATELIER" />
             </div>
             <p className="footer-brand-desc">
               Premier luxury storefront celebrating haute couture, bespoke gentlemen's atelier, and modern Indian heritage fashion.
@@ -995,7 +996,7 @@ const LandingPage = () => {
 
       {/* VIP Circle Subscription Success Modal */}
       {vipSuccessModalOpen && (
-        <div className="auth-modal-backdrop" onClick={() => setVipSuccessModalOpen(false)}>
+        <div className="auth-modal-backdrop" onClick={() => { setVipSuccessModalOpen(false); setNewsletterSubscribed(false); }}>
           <div className="auth-modal-card text-center" style={{ maxWidth: '460px', padding: '36px 28px' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(212,175,55,0.15)', border: '2px solid #D4AF37', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
               <Check size={34} color="#D4AF37" />
@@ -1028,7 +1029,7 @@ const LandingPage = () => {
             </div>
 
             <button
-              onClick={() => setVipSuccessModalOpen(false)}
+              onClick={() => { setVipSuccessModalOpen(false); setNewsletterSubscribed(false); }}
               className="btn-hero-primary"
               style={{ width: '100%', justifyContent: 'center', height: '48px' }}
             >

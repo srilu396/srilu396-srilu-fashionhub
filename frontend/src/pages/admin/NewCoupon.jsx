@@ -4,23 +4,23 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import PageHeader from '../../components/admin/PageHeader';
 import CouponForm from '../../components/admin/CouponForm';
 import { couponAPI } from '../../utils/api';
+import { useToast } from '../../components/common/Toast/useToast';
 
 const NewCoupon = () => {
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ text: '', type: '' });
   const navigate = useNavigate();
 
   const handleSubmit = async (payload) => {
     setLoading(true);
-    setMessage({ text: '', type: '' });
 
     try {
       await couponAPI.createCoupon(payload);
-      setMessage({ text: 'Coupon offer created successfully!', type: 'success' });
+      toast.success('Changes have been saved.', 'Coupon Created');
       setTimeout(() => navigate('/admin/coupons'), 1200);
     } catch (err) {
       console.error('Error creating coupon:', err);
-      setMessage({ text: err.message || 'Error creating coupon.', type: 'error' });
+      toast.error(err.message || 'Error creating coupon.', 'Coupon Error');
     } finally {
       setLoading(false);
     }
@@ -42,17 +42,6 @@ const NewCoupon = () => {
         }
       />
 
-      {message.text && (
-        <div style={{
-          ...styles.messageBox,
-          backgroundColor: message.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-          borderColor: message.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)',
-          color: message.type === 'success' ? '#10B981' : '#EF4444'
-        }}>
-          {message.text}
-        </div>
-      )}
-
       <CouponForm
         isEditing={false}
         onSubmit={handleSubmit}
@@ -66,9 +55,9 @@ const NewCoupon = () => {
 const styles = {
   secondaryBtn: {
     padding: '9px 16px',
-    backgroundColor: 'transparent',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-    color: '#F9F6F0',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
+    color: 'var(--admin-text-primary)',
     borderRadius: '6px',
     fontSize: '12px',
     fontWeight: '500',

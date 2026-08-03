@@ -420,7 +420,7 @@ const AdminProductDetails = () => {
                 {/* Brand */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={styles.metaLabel}>Brand:</span>
-                  <span style={{ fontSize: '13px', color: '#F9F6F0', fontWeight: '600' }}>
+                  <span style={{ fontSize: '13px', color: 'var(--admin-text-primary)', fontWeight: '600' }}>
                     {product.brand || 'Srilu Couture'}
                   </span>
                 </div>
@@ -447,7 +447,7 @@ const AdminProductDetails = () => {
                   <Package size={14} color="#D4AF37" />
                   <div>
                     <span style={styles.metaLabel}>Product ID</span>
-                    <span style={{ fontSize: '12px', color: '#F9F6F0', fontFamily: 'monospace', display: 'block' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--admin-text-primary)', fontFamily: 'monospace', display: 'block' }}>
                       {product._id || product.id}
                     </span>
                   </div>
@@ -457,7 +457,7 @@ const AdminProductDetails = () => {
                   <Clock size={14} color="#D4AF37" />
                   <div>
                     <span style={styles.metaLabel}>Created Date</span>
-                    <span style={{ fontSize: '12px', color: '#F9F6F0', display: 'block' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--admin-text-primary)', display: 'block' }}>
                       {product.createdAt ? new Date(product.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
                     </span>
                   </div>
@@ -467,7 +467,7 @@ const AdminProductDetails = () => {
                   <Layers size={14} color="#D4AF37" />
                   <div>
                     <span style={styles.metaLabel}>Last Updated</span>
-                    <span style={{ fontSize: '12px', color: '#F9F6F0', display: 'block' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--admin-text-primary)', display: 'block' }}>
                       {product.updatedAt ? new Date(product.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
                     </span>
                   </div>
@@ -718,8 +718,8 @@ const styles = {
     borderTopColor: '#D4AF37'
   },
   errorBanner: {
-    backgroundColor: '#141418',
-    border: '1px solid rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-danger)',
     borderRadius: '16px',
     padding: '32px',
     display: 'flex',
@@ -733,8 +733,8 @@ const styles = {
     alignItems: 'start'
   },
   galleryCard: {
-    backgroundColor: '#141418',
-    border: '1px solid rgba(212, 175, 55, 0.2)',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '16px',
     padding: '20px',
     display: 'flex',
@@ -747,8 +747,8 @@ const styles = {
     height: '480px',
     borderRadius: '12px',
     overflow: 'hidden',
-    backgroundColor: '#0D0D10',
-    border: '1px solid rgba(255, 255, 255, 0.08)'
+    backgroundColor: 'var(--admin-surface-2)',
+    border: '1px solid var(--admin-border-subtle)'
   },
   heroImage: {
     width: '100%',
@@ -760,10 +760,10 @@ const styles = {
     top: '12px',
     right: '12px',
     padding: '6px 12px',
-    backgroundColor: 'rgba(13, 13, 16, 0.85)',
-    border: '1px solid rgba(212, 175, 55, 0.3)',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '20px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '11px',
     fontWeight: '600',
     cursor: 'pointer',
@@ -780,7 +780,7 @@ const styles = {
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
     borderRadius: '12px',
     fontSize: '11px',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     fontWeight: '600'
   },
   thumbStrip: {
@@ -793,9 +793,9 @@ const styles = {
     borderRadius: '8px',
     overflow: 'hidden',
     cursor: 'pointer',
-    border: '2px solid rgba(255, 255, 255, 0.1)',
+    border: '2px solid var(--admin-border-subtle)',
     transition: 'all 0.2s ease',
-    backgroundColor: '#0D0D10'
+    backgroundColor: 'var(--admin-surface-2)'
   },
   thumbImage: {
     width: '100%',
@@ -803,38 +803,39 @@ const styles = {
     objectFit: 'cover'
   },
   detailCard: {
-    backgroundColor: '#141418',
-    border: '1px solid rgba(212, 175, 55, 0.2)',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '16px',
     padding: '22px 24px',
     display: 'flex',
-    flexDirection: 'column'
+    flexDirection: 'column',
+    boxShadow: 'var(--admin-shadow-sm)'
   },
   categoryBadge: {
     fontSize: '11px',
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: '1px',
-    color: '#D4AF37',
-    backgroundColor: 'rgba(212, 175, 55, 0.12)',
+    color: 'var(--admin-gold)',
+    backgroundColor: 'var(--admin-gold-muted)',
     padding: '4px 10px',
     borderRadius: '12px',
-    border: '1px solid rgba(212, 175, 55, 0.3)'
+    border: '1px solid var(--admin-border-gold)'
   },
   subCategoryBadge: {
     fontSize: '11px',
     fontWeight: '600',
-    color: '#A0A0AB',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    color: 'var(--admin-text-secondary)',
+    backgroundColor: 'var(--admin-input-bg)',
     padding: '4px 10px',
     borderRadius: '12px',
-    border: '1px solid rgba(255, 255, 255, 0.08)'
+    border: '1px solid var(--admin-border-subtle)'
   },
   productTitle: {
     fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '1.65rem',
     fontWeight: '700',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     margin: 0,
     letterSpacing: '-0.3px'
   },
@@ -844,8 +845,8 @@ const styles = {
     gap: '4px',
     fontSize: '12px',
     fontWeight: '700',
-    color: '#D4AF37',
-    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+    color: 'var(--admin-gold)',
+    backgroundColor: 'var(--admin-gold-muted)',
     padding: '2px 8px',
     borderRadius: '8px'
   },
@@ -854,7 +855,7 @@ const styles = {
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: '1px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     marginBottom: '8px'
   },
   pricingGrid: {
@@ -865,25 +866,25 @@ const styles = {
   },
   metaLabel: {
     fontSize: '11px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     fontWeight: '500'
   },
   priceGold: {
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '1.75rem',
     fontWeight: '700',
-    color: '#D4AF37'
+    color: 'var(--admin-gold)'
   },
   origPriceStrikethrough: {
     fontSize: '1.05rem',
-    color: '#71717A',
+    color: 'var(--admin-text-muted)',
     textDecoration: 'line-through'
   },
   discountPill: {
     padding: '3px 8px',
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    color: '#EF4444',
-    border: '1px solid rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'var(--admin-danger-bg)',
+    color: 'var(--admin-danger)',
+    border: '1px solid var(--admin-danger)',
     borderRadius: '12px',
     fontSize: '11px',
     fontWeight: '700'
@@ -893,16 +894,16 @@ const styles = {
     alignItems: 'center',
     gap: '8px',
     fontSize: '11px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-muted)',
     marginTop: '16px',
     paddingTop: '12px',
-    borderTop: '1px solid rgba(255, 255, 255, 0.05)'
+    borderTop: '1px solid var(--admin-border-subtle)'
   },
   specTile: {
-    backgroundColor: '#0D0D10',
+    backgroundColor: 'var(--admin-surface-2)',
     padding: '12px 14px',
     borderRadius: '10px',
-    border: '1px solid rgba(255, 255, 255, 0.05)',
+    border: '1px solid var(--admin-border-subtle)',
     display: 'flex',
     flexDirection: 'column',
     gap: '4px'
@@ -910,20 +911,20 @@ const styles = {
   specValue: {
     fontSize: '14px',
     fontWeight: '700',
-    color: '#F9F6F0'
+    color: 'var(--admin-text-primary)'
   },
   descriptionText: {
     fontSize: '13px',
-    color: '#D4D4D8',
+    color: 'var(--admin-text-secondary)',
     lineHeight: '1.6',
     margin: '4px 0 0 0'
   },
   tagPill: {
     padding: '3px 8px',
-    backgroundColor: 'rgba(212, 175, 55, 0.08)',
-    border: '1px solid rgba(212, 175, 55, 0.25)',
+    backgroundColor: 'var(--admin-gold-muted)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '12px',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     fontSize: '11px',
     fontWeight: '600'
   },
@@ -958,7 +959,7 @@ const styles = {
   },
   lightboxCaption: {
     marginTop: '12px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '14px',
     fontWeight: '600',
     fontFamily: "'Playfair Display', serif"
@@ -977,7 +978,7 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(5, 5, 8, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     backdropFilter: 'blur(12px)',
     display: 'flex',
     alignItems: 'center',
@@ -986,12 +987,12 @@ const styles = {
     padding: '20px'
   },
   modalContent: {
-    backgroundColor: '#141418',
-    border: '1px solid rgba(212, 175, 55, 0.35)',
+    backgroundColor: 'var(--admin-modal-bg, var(--admin-card-bg))',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '20px',
     width: '100%',
     padding: '28px',
-    boxShadow: '0 25px 60px rgba(0,0,0,0.7)'
+    boxShadow: 'var(--admin-shadow-lg)'
   },
   modalHeader: {
     display: 'flex',
@@ -999,18 +1000,18 @@ const styles = {
     justifyContent: 'space-between',
     marginBottom: '20px',
     paddingBottom: '14px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+    borderBottom: '1px solid var(--admin-border-subtle)'
   },
   modalTitle: {
     fontFamily: "'Playfair Display', serif",
     fontSize: '1.25rem',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     margin: 0
   },
   modalClose: {
     background: 'none',
     border: 'none',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     fontSize: '24px',
     cursor: 'pointer'
   },
@@ -1027,32 +1028,32 @@ const styles = {
   label: {
     fontSize: '12px',
     fontWeight: '600',
-    color: '#A0A0AB'
+    color: 'var(--admin-text-secondary)'
   },
   input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '8px',
     padding: '10px 14px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '13px',
     outline: 'none'
   },
   textarea: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '8px',
     padding: '10px 14px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '13px',
     outline: 'none',
     resize: 'vertical'
   },
   editImgCard: {
-    backgroundColor: '#0D0D10',
+    backgroundColor: 'var(--admin-input-bg)',
     padding: '10px',
     borderRadius: '8px',
-    border: '1px solid rgba(255,255,255,0.05)',
+    border: '1px solid var(--admin-border-subtle)',
     display: 'flex',
     flexDirection: 'column',
     gap: '6px'
@@ -1063,7 +1064,7 @@ const styles = {
     gap: '12px',
     marginTop: '16px',
     paddingTop: '16px',
-    borderTop: '1px solid rgba(255, 255, 255, 0.08)'
+    borderTop: '1px solid var(--admin-border-subtle)'
   }
 };
 

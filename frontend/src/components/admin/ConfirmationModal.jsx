@@ -38,9 +38,9 @@ const ConfirmationModal = ({
         {/* Header Badge */}
         <div style={{
           ...styles.iconBadge,
-          backgroundColor: danger ? 'rgba(239, 68, 68, 0.12)' : 'rgba(212, 175, 55, 0.12)',
-          borderColor: danger ? 'rgba(239, 68, 68, 0.3)' : 'rgba(212, 175, 55, 0.3)',
-          color: danger ? '#EF4444' : '#D4AF37'
+          backgroundColor: danger ? 'var(--admin-danger-bg)' : 'var(--admin-gold-muted)',
+          borderColor: danger ? 'var(--admin-danger)' : 'var(--admin-border-gold)',
+          color: danger ? 'var(--admin-danger)' : 'var(--admin-gold)'
         }}>
           {ModalIcon ? <ModalIcon size={24} /> : <AlertTriangle size={24} />}
         </div>
@@ -70,8 +70,8 @@ const ConfirmationModal = ({
             disabled={loading}
             style={{
               ...styles.confirmBtn,
-              backgroundColor: danger ? '#DC2626' : '#C5A059',
-              color: danger ? '#FFFFFF' : '#0D0D10'
+              backgroundColor: danger ? 'var(--admin-danger)' : 'var(--admin-gold)',
+              color: danger ? '#FFFFFF' : 'var(--active-pill-text)'
             }}
           >
             {loading ? 'Processing...' : confirmText}
@@ -90,24 +90,24 @@ const styles = {
     right: 0,
     bottom: 0,
     inset: 0,
-    backgroundColor: 'rgba(5, 5, 8, 0.75)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     backdropFilter: 'blur(12px)',
     WebkitBackdropFilter: 'blur(12px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 9999,
+    zIndex: 'var(--z-modal, 9999)',
     padding: '20px'
   },
   modal: {
     position: 'relative',
-    backgroundColor: '#141418',
-    border: '1px solid rgba(212, 175, 55, 0.35)',
+    backgroundColor: 'var(--admin-modal-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '24px',
     width: '100%',
     maxWidth: '440px',
     padding: '32px 28px',
-    boxShadow: '0 30px 70px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
+    boxShadow: 'var(--admin-shadow-lg)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -130,7 +130,7 @@ const styles = {
     right: '18px',
     background: 'none',
     border: 'none',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-muted)',
     cursor: 'pointer',
     padding: '4px',
     borderRadius: '50%',
@@ -143,13 +143,13 @@ const styles = {
     fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '1.35rem',
     fontWeight: '700',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     margin: '0 0 8px 0',
     letterSpacing: '-0.3px'
   },
   body: {
     fontSize: '0.86rem',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     lineHeight: '1.5',
     margin: '0 0 24px 0',
     fontWeight: '300'
@@ -164,10 +164,10 @@ const styles = {
   cancelBtn: {
     flex: 1,
     padding: '11px 18px',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '30px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '0.85rem',
     fontWeight: '600',
     fontFamily: "var(--font-sans, 'Sora', sans-serif)",
@@ -183,7 +183,7 @@ const styles = {
     fontWeight: '700',
     fontFamily: "var(--font-sans, 'Sora', sans-serif)",
     cursor: 'pointer',
-    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+    boxShadow: 'var(--admin-shadow-sm)',
     transition: 'all 0.2s ease'
   }
 };

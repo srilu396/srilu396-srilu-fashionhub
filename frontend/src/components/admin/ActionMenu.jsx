@@ -145,10 +145,10 @@ const ActionMenu = ({ items = [] }) => {
           aria-orientation="vertical"
           style={{
             ...menuStyles,
-            backgroundColor: '#141418',
-            border: '1px solid rgba(212, 175, 55, 0.35)',
+            backgroundColor: 'var(--admin-dropdown-bg)',
+            border: '1px solid var(--admin-border-gold)',
             borderRadius: '12px',
-            boxShadow: '0 16px 40px rgba(0, 0, 0, 0.85)',
+            boxShadow: 'var(--admin-shadow-lg)',
             minWidth: '190px',
             padding: '6px',
             backdropFilter: 'blur(16px)',
@@ -169,7 +169,7 @@ const ActionMenu = ({ items = [] }) => {
               onClick={(e) => {
                 e.stopPropagation();
                 closeMenu();
-                if (item.onClick) item.onClick();
+                if (item.onClick) item.onClick(e);
               }}
               style={{
                 width: '100%',
@@ -179,20 +179,21 @@ const ActionMenu = ({ items = [] }) => {
                 padding: '9px 14px',
                 background: 'none',
                 border: 'none',
-                color: item.danger ? '#EF4444' : '#F9F6F0',
+                color: item.danger ? 'var(--admin-danger)' : 'var(--admin-text-primary)',
                 fontSize: '0.84rem',
                 fontWeight: '600',
                 textAlign: 'left',
                 cursor: 'pointer',
                 borderRadius: '8px',
                 transition: 'all 0.15s ease',
-                outline: 'none'
+                outline: 'none',
+                boxSizing: 'border-box'
               }}
               onMouseEnter={(e) => {
                 setFocusedIndex(idx);
                 e.currentTarget.style.backgroundColor = item.danger 
-                  ? 'rgba(239, 68, 68, 0.15)' 
-                  : 'rgba(212, 175, 55, 0.15)';
+                  ? 'var(--admin-danger-bg)' 
+                  : 'var(--admin-gold-muted)';
                 e.currentTarget.style.transform = 'translateX(2px)';
               }}
               onMouseLeave={(e) => {
@@ -200,9 +201,10 @@ const ActionMenu = ({ items = [] }) => {
                 e.currentTarget.style.transform = 'none';
               }}
               onFocus={(e) => {
+                setFocusedIndex(idx);
                 e.currentTarget.style.backgroundColor = item.danger 
-                  ? 'rgba(239, 68, 68, 0.15)' 
-                  : 'rgba(212, 175, 55, 0.15)';
+                  ? 'var(--admin-danger-bg)' 
+                  : 'var(--admin-gold-muted)';
                 e.currentTarget.style.transform = 'translateX(2px)';
               }}
               onBlur={(e) => {

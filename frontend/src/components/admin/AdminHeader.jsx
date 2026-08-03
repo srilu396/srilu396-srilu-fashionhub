@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import SearchInput from './SearchInput';
+import NotificationDrawer from './NotificationDrawer';
 import { notificationAPI } from '../../utils/api';
 import { 
-  Bell, Sun, Moon, ShoppingBag, UserCheck, Crown, 
-  MessageSquare, AlertTriangle, CheckCheck 
+  Bell, Sun, Moon 
 } from 'lucide-react';
 
 const AdminHeader = ({ onMobileToggle, title }) => {
   const { adminUser } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -55,13 +53,39 @@ const AdminHeader = ({ onMobileToggle, title }) => {
     }
   };
 
-  const getNotifIcon = (type) => {
-    switch (type) {
-      case 'order': return <ShoppingBag size={14} color="#10B981" />;
-      case 'vip': return <Crown size={14} color="var(--admin-gold)" />;
-      case 'customer': return <UserCheck size={14} color="#3B82F6" />;
-      case 'inventory': return <AlertTriangle size={14} color="#F59E0B" />;
-      default: return <MessageSquare size={14} color="var(--admin-gold)" />;
+  const handleMarkAsRead = async (id) => {
+    try {
+      await notificationAPI.markAsRead(id);
+      setNotifications(prev =>
+        prev.map(n => ((n._id || n.id) === id ? { ...n, isRead: true } : n))
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error('Error marking single notification read:', err);
+    }
+  };
+
+  const handleDeleteNotification = async (id) => {
+    try {
+      await notificationAPI.delete(id);
+      const target = notifications.find(n => (n._id || n.id) === id);
+      setNotifications(prev => prev.filter(n => (n._id || n.id) !== id));
+      if (target && !target.isRead) {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (err) {
+      console.error('Error deleting notification:', err);
+    }
+  };
+
+  const handleClearAll = async () => {
+    try {
+      // Clear locally and mark all read on server
+      await notificationAPI.markAllRead();
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('Error clearing notifications:', err);
     }
   };
 
@@ -81,16 +105,6 @@ const AdminHeader = ({ onMobileToggle, title }) => {
         <h2 style={styles.pageTitle}>{title || 'Executive Overview'}</h2>
       </div>
 
-      <div style={styles.middleSection}>
-        <SearchInput 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onClear={() => setSearchQuery('')}
-          placeholder="Global search products, orders, clients..."
-          width="300px"
-        />
-      </div>
-
       <div style={styles.rightSection}>
         {/* Live System Status Pill */}
         <div style={styles.statusPill}>
@@ -108,61 +122,26 @@ const AdminHeader = ({ onMobileToggle, title }) => {
           {theme === 'dark' ? <Sun size={17} color="var(--admin-gold)" /> : <Moon size={17} color="var(--admin-text-primary)" />}
         </button>
 
-        {/* Notification Bell Dropdown */}
-        <div style={{ position: 'relative' }}>
-          <button 
-            onClick={() => setNotificationsOpen(!notificationsOpen)} 
-            style={styles.iconBtn}
-            aria-label="Notifications"
-          >
-            <Bell size={18} color="var(--admin-text-secondary)" />
-            {unreadCount > 0 && <span style={styles.badgeDot} />}
-          </button>
+        {/* Notification Bell Trigger & Enterprise Drawer */}
+        <button 
+          onClick={() => setNotificationsOpen(true)} 
+          style={styles.iconBtn}
+          aria-label="Open Notifications"
+        >
+          <Bell size={18} color="var(--admin-text-secondary)" />
+          {unreadCount > 0 && <span style={styles.badgeDot} />}
+        </button>
 
-          {notificationsOpen && (
-            <div style={styles.notifDropdown}>
-              <div style={styles.notifHeader}>
-                <span style={styles.notifTitle}>Notifications</span>
-                {unreadCount > 0 ? (
-                  <button onClick={handleMarkAllRead} style={styles.markReadBtn}>
-                    <CheckCheck size={12} /> Mark all read
-                  </button>
-                ) : (
-                  <span style={styles.notifCount}>Up to date</span>
-                )}
-              </div>
-
-              <div style={styles.notifList}>
-                {notifications.length === 0 ? (
-                  <div style={{ padding: '16px', textTransform: 'none', color: 'var(--admin-text-muted)', textAlign: 'center', fontSize: '12px' }}>
-                    No new notifications
-                  </div>
-                ) : (
-                  notifications.map((n) => (
-                    <Link
-                      key={n._id || n.id}
-                      to={n.link || '#'}
-                      onClick={() => setNotificationsOpen(false)}
-                      style={{
-                        ...styles.notifItem,
-                        backgroundColor: n.isRead ? 'transparent' : 'var(--admin-gold-muted)'
-                      }}
-                    >
-                      <div style={{ marginTop: '2px' }}>{getNotifIcon(n.type)}</div>
-                      <div style={styles.notifContent}>
-                        <span style={styles.notifItemTitle}>{n.title}</span>
-                        <span style={styles.notifText}>{n.message}</span>
-                        <span style={styles.notifTime}>
-                          {new Date(n.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    </Link>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+        <NotificationDrawer
+          isOpen={notificationsOpen}
+          onClose={() => setNotificationsOpen(false)}
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onMarkAllRead={handleMarkAllRead}
+          onMarkAsRead={handleMarkAsRead}
+          onDeleteNotification={handleDeleteNotification}
+          onClearAll={handleClearAll}
+        />
 
         {/* Profile Avatar */}
         <Link to="/admin/profile" style={styles.profileBtn}>

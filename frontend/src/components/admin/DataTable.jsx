@@ -281,11 +281,11 @@ const DataTable = ({
                   style={{
                     ...styles.pagePill,
                     backgroundColor: page === currentPage 
-                      ? 'var(--active-pill-bg, #2563EB)' 
+                      ? 'var(--admin-gold)' 
                       : 'transparent',
                     color: page === currentPage 
-                      ? '#FFFFFF' 
-                      : 'var(--text-secondary, #64748B)',
+                      ? 'var(--active-pill-text)' 
+                      : 'var(--admin-text-secondary)',
                     fontWeight: page === currentPage ? '700' : '500'
                   }}
                 >
@@ -314,23 +314,23 @@ const DataTable = ({
 
 const styles = {
   container: {
-    backgroundColor: 'var(--card-bg, #141418)',
-    border: '1px solid var(--border-color, rgba(212, 175, 55, 0.2))',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-table-border)',
     borderRadius: '16px',
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: '0 10px 30px rgba(0,0,0,0.15)'
+    boxShadow: 'var(--admin-shadow-sm)'
   },
   controlBar: {
     padding: '16px 20px',
-    borderBottom: '1px solid var(--border-color, rgba(255, 255, 255, 0.08))',
+    borderBottom: '1px solid var(--admin-table-divider)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     flexWrap: 'wrap',
     gap: '14px',
-    backgroundColor: 'var(--header-bg, rgba(255, 255, 255, 0.015))'
+    backgroundColor: 'var(--admin-card-bg)'
   },
   tableScrollWrapper: {
     overflowX: 'auto',
@@ -344,7 +344,7 @@ const styles = {
     fontSize: '13px'
   },
   headRow: {
-    backgroundColor: 'var(--th-bg, #0D0D10)',
+    backgroundColor: 'var(--admin-table-head-bg)',
     position: 'sticky',
     top: 0,
     zIndex: 10
@@ -355,30 +355,30 @@ const styles = {
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: '1px',
-    color: 'var(--text-muted, #94A3B8)',
-    borderBottom: '1px solid var(--border-color, rgba(212, 175, 55, 0.2))',
+    color: 'var(--admin-text-secondary)',
+    borderBottom: '1px solid var(--admin-table-border)',
     whiteSpace: 'nowrap',
     userSelect: 'none'
   },
   bodyRow: {
-    borderBottom: '1px solid var(--border-color, rgba(255, 255, 255, 0.04))',
-    transition: 'background-color 0.2s ease'
+    borderBottom: '1px solid var(--admin-table-divider)',
+    transition: 'background-color 0.15s ease'
   },
   td: {
     padding: '16px 20px',
-    color: 'var(--text-primary, #F9F6F0)',
+    color: 'var(--admin-text-primary)',
     verticalAlign: 'middle',
-    borderBottom: '1px solid var(--border-color, rgba(255, 255, 255, 0.04))'
+    borderBottom: '1px solid var(--admin-table-divider)'
   },
   paginationFooter: {
     padding: '14px 20px',
-    borderTop: '1px solid var(--border-color, rgba(255, 255, 255, 0.08))',
+    borderTop: '1px solid var(--admin-table-border)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     flexWrap: 'wrap',
     gap: '16px',
-    backgroundColor: 'var(--header-bg, rgba(255, 255, 255, 0.015))'
+    backgroundColor: 'var(--admin-table-footer)'
   },
   rowsPerPageContainer: {
     display: 'flex',
@@ -387,16 +387,16 @@ const styles = {
   },
   metaLabel: {
     fontSize: '13px',
-    color: 'var(--text-secondary, #64748B)',
+    color: 'var(--admin-text-secondary)',
     fontWeight: '500'
   },
   rowsSelect: {
     appearance: 'none',
-    backgroundColor: 'var(--input-bg, rgba(255, 255, 255, 0.05))',
-    border: '1px solid var(--border-color, rgba(255, 255, 255, 0.15))',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '8px',
     padding: '6px 28px 6px 12px',
-    color: 'var(--text-primary, #1E293B)',
+    color: 'var(--admin-text-primary)',
     fontSize: '13px',
     fontWeight: '600',
     outline: 'none',
@@ -407,12 +407,12 @@ const styles = {
     right: '8px',
     top: '50%',
     transform: 'translateY(-50%)',
-    color: 'var(--text-secondary, #64748B)',
+    color: 'var(--admin-text-secondary)',
     pointerEvents: 'none'
   },
   rangeText: {
     fontSize: '13px',
-    color: 'var(--text-secondary, #64748B)',
+    color: 'var(--admin-text-secondary)',
     fontWeight: '500'
   },
   pageNavContainer: {
@@ -423,7 +423,7 @@ const styles = {
   navBtn: {
     background: 'none',
     border: 'none',
-    color: 'var(--text-secondary, #64748B)',
+    color: 'var(--admin-text-secondary)',
     fontSize: '13px',
     fontWeight: '600',
     padding: '6px 12px',

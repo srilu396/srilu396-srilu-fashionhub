@@ -7,15 +7,19 @@ import {
   clearCart, createOrder 
 } from '../../redux/slices/cartSlice';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { useToast } from '../../components/common/Toast/useToast';
+import { useAuth } from '../../context/AuthContext';
 import { 
   ShoppingBag, Trash2, ChevronLeft, Plus, Minus,
   Shield, Truck, Package, CreditCard, X,
-  MapPin, Phone, FileText, Tag
+  MapPin, Phone, FileText, Tag, Crown
 } from 'lucide-react';
 
 const CartPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const toast = useToast();
+  const { user } = useAuth();
   const { items, totalItems, totalAmount, loading } = useSelector((state) => state.cart);
   const [orderLoading, setOrderLoading] = React.useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = React.useState(false);
@@ -33,9 +37,26 @@ const CartPage = () => {
     notes: '',
   });
 
+  const isVipMember = React.useMemo(() => {
+    const localVip = localStorage.getItem('isVipSubscriber') === 'true';
+    const userObj = user || JSON.parse(localStorage.getItem('user') || 'null');
+    return localVip || Boolean(userObj?.isVip || userObj?.role === 'vip');
+  }, [user]);
+
   useEffect(() => {
     dispatch(fetchCart());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (isVipMember && !appliedCoupon) {
+      setAppliedCoupon({
+        coupon_code: 'CLUB-PRIVÉ-2026',
+        discount_type: 'percentage',
+        discount_value: 15,
+        isVip: true
+      });
+    }
+  }, [isVipMember, appliedCoupon]);
 
   const handleQuantityChange = (productId, newQuantity) => {
     if (newQuantity < 1) {
@@ -83,16 +104,18 @@ const validateCoupon = async (code) => {
     if (data.success) {
       setAppliedCoupon(data.coupon);
       setCouponError('');
-      alert(`Coupon "${code}" applied successfully!`);
+      toast.success(`Coupon "${code}" applied successfully!`, 'Coupon Applied');
       return true;
     } else {
       setAppliedCoupon(null);
       setCouponError(data.message || 'Invalid coupon code');
+      toast.error(data.message || 'Invalid coupon code', 'Coupon Error');
       return false;
     }
   } catch (error) {
     console.error('Error validating coupon:', error);
     setCouponError('Failed to validate coupon. Please try again.');
+    toast.error('Failed to validate coupon. Please try again.');
     setAppliedCoupon(null);
     return false;
   } finally {
@@ -103,6 +126,7 @@ const validateCoupon = async (code) => {
 const handleApplyCoupon = async () => {
   if (!couponCode.trim()) {
     setCouponError('Please enter a coupon code');
+    toast.warning('Please enter a coupon code');
     return;
   }
 
@@ -116,7 +140,7 @@ const handleApplyCoupon = async () => {
 const handleRemoveCoupon = () => {
   setAppliedCoupon(null);
   setCouponError('');
-  alert('Coupon removed successfully');
+  toast.info('Coupon removed successfully');
 };
 
 const calculateDiscount = () => {
@@ -454,6 +478,58 @@ const handleCheckout = async () => {
     <h2 className="summary-title">Order Summary</h2>
     
     <div className="summary-content">
+      {/* VIP Member Recognition Banner Pill */}
+      {isVipMember && (
+        <div style={{
+          backgroundColor: 'rgba(212, 175, 55, 0.12)',
+          border: '1px solid rgba(212, 175, 55, 0.4)',
+          borderRadius: '12px',
+          padding: '14px 16px',
+          marginBottom: '18px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          boxShadow: '0 4px 15px rgba(212, 175, 55, 0.15)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              backgroundColor: '#D4AF37',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <Crown size={18} color="#0D0D11" />
+            </div>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#D4AF37', letterSpacing: '0.4px' }}>
+                VIP Member Recognized
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#E4E4E7', marginTop: '1px' }}>
+                15% Privé Discount Applied (CLUB-PRIVÉ-2026)
+              </div>
+            </div>
+          </div>
+          <span style={{
+            backgroundColor: '#D4AF37',
+            color: '#0D0D11',
+            fontSize: '10px',
+            fontWeight: '800',
+            padding: '4px 9px',
+            borderRadius: '12px',
+            letterSpacing: '0.8px',
+            textTransform: 'uppercase',
+            whiteSpace: 'nowrap'
+          }}>
+            CLUB PRIVÉ
+          </span>
+        </div>
+      )}
+
       {/* COUPON SECTION - ADD THIS */}
       <div className="coupon-section">
         {!appliedCoupon ? (

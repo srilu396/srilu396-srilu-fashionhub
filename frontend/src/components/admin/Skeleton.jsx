@@ -16,7 +16,7 @@ export const CardSkeleton = ({ count = 4 }) => {
 
 export const TableSkeleton = ({ rows = 5, cols = 5 }) => {
   return (
-    <div style={{ padding: '20px', backgroundColor: '#141417', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+    <div style={{ padding: '20px', backgroundColor: 'var(--admin-card-bg)', borderRadius: '10px', border: '1px solid var(--admin-border-subtle)' }}>
       {Array(rows).fill(0).map((_, rIdx) => (
         <div key={rIdx} style={{ display: 'flex', gap: '16px', marginBottom: '16px', alignItems: 'center' }}>
           {Array(cols).fill(0).map((_, cIdx) => (

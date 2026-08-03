@@ -5,10 +5,13 @@ import DataTable from '../../components/admin/DataTable';
 import StatusBadge from '../../components/admin/StatusBadge';
 import ActionMenu from '../../components/admin/ActionMenu';
 import ConfirmationModal from '../../components/admin/ConfirmationModal';
+import Button from '../../components/admin/Button';
 import { vipAPI } from '../../utils/api';
-import { Download, Crown } from 'lucide-react';
+import { useToast } from '../../components/common/Toast/useToast';
+import { Download, Crown, Trash2 } from 'lucide-react';
 
 const VipSubscribersManagement = () => {
+  const toast = useToast();
   const [subscribers, setSubscribers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,6 +28,7 @@ const VipSubscribersManagement = () => {
       }
     } catch (err) {
       console.error('Error fetching VIP subscribers:', err);
+      toast.error('Failed to load VIP subscribers list');
     } finally {
       setLoading(false);
     }
@@ -39,9 +43,11 @@ const VipSubscribersManagement = () => {
     setDeleteLoading(true);
     try {
       await vipAPI.delete(selectedSubscriber._id || selectedSubscriber.id);
+      toast.success(`Removed "${selectedSubscriber.email}" from Club Privé roster.`, 'Member Removed');
       fetchSubscribers();
     } catch (err) {
       console.error('Error removing VIP subscriber:', err);
+      toast.error('Failed to remove VIP subscriber');
     } finally {
       setDeleteLoading(false);
       setDeleteModalOpen(false);
@@ -67,6 +73,7 @@ const VipSubscribersManagement = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    toast.info('VIP Subscribers roster exported to CSV.', 'Export Complete');
   };
 
   const columns = [
@@ -76,9 +83,9 @@ const VipSubscribersManagement = () => {
       render: (row) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={styles.crownIcon}>
-            <Crown size={15} color="#D4AF37" />
+            <Crown size={15} color="var(--admin-gold, #D4AF37)" />
           </div>
-          <span style={{ fontWeight: '600', color: '#F9F6F0' }}>{row.email}</span>
+          <span style={{ fontWeight: '600', color: 'var(--admin-text-primary)' }}>{row.email}</span>
         </div>
       ),
       sortable: true
@@ -107,6 +114,7 @@ const VipSubscribersManagement = () => {
           items={[
             { 
               label: 'Remove VIP Subscriber', 
+              icon: <Trash2 size={15} color="#EF4444" />,
               danger: true, 
               onClick: () => { setSelectedSubscriber(row); setDeleteModalOpen(true); } 
             }
@@ -123,9 +131,14 @@ const VipSubscribersManagement = () => {
         subtitle="Manage private newsletter subscribers, export email rosters, and track membership status"
         breadcrumbs={[{ label: 'VIP Privé' }]}
         actions={
-          <button onClick={handleExportCSV} style={styles.exportBtn} disabled={subscribers.length === 0}>
-            <Download size={15} /> Export CSV
-          </button>
+          <Button
+            onClick={handleExportCSV}
+            variant="primary"
+            icon={<Download size={15} />}
+            disabled={subscribers.length === 0}
+          >
+            Export CSV
+          </Button>
         }
       />
 
@@ -134,10 +147,6 @@ const VipSubscribersManagement = () => {
         data={subscribers}
         loading={loading}
         searchPlaceholder="Search subscribers by email..."
-        filterKey="status"
-        filterOptions={[
-          { label: 'All Subscribers', value: 'ALL' }
-        ]}
         emptyTitle="No VIP Subscribers"
         emptyDescription="Subscribers from Landing Page Club Privé will appear here."
       />
@@ -158,24 +167,11 @@ const VipSubscribersManagement = () => {
 };
 
 const styles = {
-  exportBtn: {
-    padding: '9px 16px',
-    backgroundColor: '#141419',
-    border: '1px solid rgba(212, 175, 55, 0.4)',
-    color: '#D4AF37',
-    borderRadius: '6px',
-    fontSize: '12px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px'
-  },
   crownIcon: {
     width: '32px',
     height: '32px',
     borderRadius: '50%',
-    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+    backgroundColor: 'var(--admin-gold-muted, rgba(212, 175, 55, 0.12))',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center'

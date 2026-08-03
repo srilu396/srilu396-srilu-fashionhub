@@ -3,7 +3,7 @@ import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 import '../../styles/admin.css';
 
-const AdminLayout = ({ children, title = 'Dashboard' }) => {
+const AdminLayout = ({ children, title = 'Dashboard', showSearch = true }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -26,6 +26,7 @@ const AdminLayout = ({ children, title = 'Dashboard' }) => {
       <div className="admin-main-wrapper">
         <AdminHeader
           title={title}
+          showSearch={showSearch}
           onMobileToggle={() => setMobileOpen(!mobileOpen)}
         />
 

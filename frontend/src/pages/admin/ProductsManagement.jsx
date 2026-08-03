@@ -11,6 +11,7 @@ import BulkUploadModal from '../../components/admin/BulkUploadModal';
 import Button from '../../components/admin/Button';
 import { productAPI, categoryAPI } from '../../utils/api';
 import { Edit2, Trash2, Upload, Plus } from 'lucide-react';
+import { useToast } from '../../components/common/Toast/useToast';
 
 const DEFAULT_IMAGE_SET = [
   'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=800&auto=format&fit=crop&q=80',
@@ -19,6 +20,7 @@ const DEFAULT_IMAGE_SET = [
 ];
 
 const ProductsManagement = () => {
+  const toast = useToast();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,15 +34,14 @@ const ProductsManagement = () => {
   // Edit Product Modal
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState({
-    id: '',
     name: '',
-    price: 0,
+    price: '',
     category: '',
     subCategory: '',
     description: '',
-    rating: 4.8,
+    rating: 4.5,
     stock: 10,
-    images: [...DEFAULT_IMAGE_SET]
+    images: ['', '', '']
   });
   const [editLoading, setEditLoading] = useState(false);
 
@@ -60,6 +61,7 @@ const ProductsManagement = () => {
       }
     } catch (err) {
       console.error('Error loading products:', err);
+      toast.error('Error loading products list');
     } finally {
       setLoading(false);
     }
@@ -109,48 +111,47 @@ const ProductsManagement = () => {
       .map(cat => ({ label: cat, value: cat }));
   }, [categories, selectedProduct]);
 
-  const handleDeleteConfirm = async () => {
+  const handleDeleteProduct = async () => {
     if (!selectedProduct) return;
     setDeleteLoading(true);
+
     try {
       const res = await productAPI.delete(selectedProduct._id || selectedProduct.id);
-      if (res.success || res.message) {
-        setMessage('Product removed successfully.');
-        setProducts(prev => prev.filter(p => (p._id || p.id) !== (selectedProduct._id || selectedProduct.id)));
+      if (res.success) {
+        toast.success(`"${selectedProduct.name}" removed from catalog`, 'Product Deleted');
+        loadProducts();
+        setDeleteModalOpen(false);
+        setSelectedProduct(null);
+      } else {
+        toast.error(res.message || 'Failed to delete product');
       }
     } catch (err) {
       console.error('Error deleting product:', err);
+      toast.error('Error deleting product');
     } finally {
       setDeleteLoading(false);
-      setDeleteModalOpen(false);
-      setSelectedProduct(null);
     }
   };
 
   const openEditModal = (product) => {
     setSelectedProduct(product);
-    
-    let prodImages = [];
-    if (Array.isArray(product.images) && product.images.length > 0) {
-      prodImages = [...product.images];
-    } else if (product.image) {
-      prodImages = [product.image];
-    }
-    
-    while (prodImages.length < 3) {
-      prodImages.push(DEFAULT_IMAGE_SET[prodImages.length % 3]);
+    const existingImages = product.images && product.images.length > 0 
+      ? [...product.images] 
+      : (product.image ? [product.image] : []);
+
+    while (existingImages.length < 3) {
+      existingImages.push(DEFAULT_IMAGE_SET[existingImages.length % 3] || '');
     }
 
     setEditFormData({
-      id: product._id || product.id,
       name: product.name || '',
-      price: product.price || 0,
+      price: product.price !== undefined ? product.price : '',
       category: product.category || "Women's Couture",
       subCategory: product.subCategory || 'General',
       description: product.description || '',
       rating: product.rating || 4.5,
       stock: product.stock !== undefined ? product.stock : (product.inventory !== undefined ? product.inventory : 10),
-      images: prodImages
+      images: existingImages
     });
     setEditModalOpen(true);
   };
@@ -167,7 +168,7 @@ const ProductsManagement = () => {
 
   const handleRemoveEditImageField = (index) => {
     if (editFormData.images.length <= 3) {
-      alert('Every product must support at least 3 images minimum.');
+      toast.warning('Every product must support at least 3 images minimum.', 'Image Requirement');
       return;
     }
     const updated = editFormData.images.filter((_, i) => i !== index);
@@ -182,7 +183,7 @@ const ProductsManagement = () => {
     try {
       const validImages = editFormData.images.filter(img => img && img.trim() !== '');
       if (validImages.length < 3) {
-        alert('Please ensure at least 3 valid image URLs are provided.');
+        toast.warning('Please ensure at least 3 valid image URLs are provided.', 'Validation Warning');
         setEditLoading(false);
         return;
       }
@@ -202,15 +203,15 @@ const ProductsManagement = () => {
 
       const res = await productAPI.update(selectedProduct._id || selectedProduct.id, updatePayload);
       if (res.success || res.product || res._id) {
-        setMessage('Product details updated successfully.');
+        toast.success('Product details updated successfully.', 'Product Updated');
         loadProducts();
         setEditModalOpen(false);
       } else {
-        alert(res.message || 'Failed to update product');
+        toast.error(res.message || 'Failed to update product');
       }
     } catch (err) {
       console.error('Error updating product:', err);
-      alert('Error updating product. Please try again.');
+      toast.error('Error updating product. Please try again.');
     } finally {
       setEditLoading(false);
     }
@@ -237,13 +238,13 @@ const ProductsManagement = () => {
                 height: '54px',
                 objectFit: 'cover',
                 borderRadius: '6px',
-                backgroundColor: '#0B0B0E',
-                border: '1px solid rgba(212, 175, 55, 0.2)'
+                backgroundColor: 'var(--admin-surface-2)',
+                border: '1px solid var(--admin-border-subtle)'
               }}
             />
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontWeight: '600', color: '#F9F6F0' }}>{row.name}</span>
-              <span style={{ fontSize: '11px', color: '#A0A0AB' }}>
+              <span style={{ fontWeight: '600', color: 'var(--admin-text-primary)' }}>{row.name}</span>
+              <span style={{ fontSize: '11px', color: 'var(--admin-text-secondary)' }}>
                 SKU: {row.sku || (row._id || row.id || '').slice(-6).toUpperCase()}
               </span>
             </div>
@@ -257,8 +258,8 @@ const ProductsManagement = () => {
       accessor: 'category',
       render: (row) => (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontWeight: '500', color: '#F9F6F0' }}>{row.category || "Women's"}</span>
-          <span style={{ fontSize: '11px', color: '#A0A0AB' }}>{row.subCategory || 'Couture'}</span>
+          <span style={{ fontWeight: '500', color: 'var(--admin-text-primary)' }}>{row.category || "Women's"}</span>
+          <span style={{ fontSize: '11px', color: 'var(--admin-text-secondary)' }}>{row.subCategory || 'Couture'}</span>
         </div>
       ),
       sortable: true
@@ -268,7 +269,7 @@ const ProductsManagement = () => {
       accessor: 'price',
       align: 'right',
       render: (row) => (
-        <span style={{ fontWeight: '600', fontFamily: "'Playfair Display', serif", color: '#D4AF37' }}>
+        <span style={{ fontWeight: '600', fontFamily: "var(--font-serif, 'Playfair Display', serif)", color: 'var(--admin-gold)' }}>
           ₹{Math.round(row.price || 0).toLocaleString('en-IN')}
         </span>
       ),
@@ -296,12 +297,12 @@ const ProductsManagement = () => {
             items={[
               {
                 label: 'Edit Product',
-                icon: <Edit2 size={14} color="#D4AF37" />,
+                icon: <Edit2 size={14} color="var(--admin-gold)" />,
                 onClick: () => openEditModal(row)
               },
               {
                 label: 'Delete Product',
-                icon: <Trash2 size={14} color="#EF4444" />,
+                icon: <Trash2 size={14} color="var(--admin-danger)" />,
                 danger: true,
                 onClick: () => openDeleteModal(row)
               }
@@ -377,7 +378,7 @@ const ProductsManagement = () => {
       <ConfirmationModal
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
-        onConfirm={handleDeleteConfirm}
+        onConfirm={handleDeleteProduct}
         title="Delete Product"
         message={`Are you sure you want to delete "${selectedProduct?.name}"? This action cannot be undone.`}
         confirmText="Delete Product"
@@ -652,34 +653,34 @@ const styles = {
     padding: '20px'
   },
   modalContent: {
-    backgroundColor: '#141418',
-    border: '1px solid rgba(212, 175, 55, 0.35)',
+    backgroundColor: 'var(--admin-modal-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '16px',
     padding: '24px',
     width: '100%',
     maxHeight: '90vh',
     overflowY: 'auto',
-    boxShadow: '0 20px 50px rgba(0,0,0,0.8)'
+    boxShadow: 'var(--admin-shadow-lg)'
   },
   modalHeader: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: '16px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+    borderBottom: '1px solid var(--admin-border-subtle)',
     paddingBottom: '12px'
   },
   modalTitle: {
     fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '18px',
     fontWeight: '600',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     margin: 0
   },
   modalClose: {
     background: 'none',
     border: 'none',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-muted)',
     fontSize: '24px',
     cursor: 'pointer'
   },
@@ -698,31 +699,31 @@ const styles = {
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: '0.8px',
-    color: '#D4AF37'
+    color: 'var(--admin-gold)'
   },
   input: {
     padding: '10px 12px',
-    backgroundColor: '#0B0B0E',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '6px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '13px',
     outline: 'none'
   },
   textarea: {
     padding: '10px 12px',
-    backgroundColor: '#0B0B0E',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '6px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '13px',
     outline: 'none',
     fontFamily: 'inherit',
     resize: 'vertical'
   },
   editImgCard: {
-    backgroundColor: '#0B0B0E',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-border-subtle)',
     borderRadius: '6px',
     padding: '8px',
     display: 'flex',
@@ -737,7 +738,7 @@ const styles = {
   removeImgBtn: {
     background: 'none',
     border: 'none',
-    color: '#EF4444',
+    color: 'var(--admin-danger)',
     fontSize: '16px',
     cursor: 'pointer'
   },
@@ -753,7 +754,7 @@ const styles = {
     gap: '12px',
     marginTop: '16px',
     paddingTop: '12px',
-    borderTop: '1px solid rgba(255, 255, 255, 0.08)'
+    borderTop: '1px solid var(--admin-border-subtle)'
   },
   // View Product Drawer Styles
   viewMediaContainer: {
@@ -767,8 +768,8 @@ const styles = {
     height: '240px',
     borderRadius: '12px',
     overflow: 'hidden',
-    border: '1px solid rgba(212, 175, 55, 0.25)',
-    backgroundColor: '#0D0D11'
+    border: '1px solid var(--admin-border-gold)',
+    backgroundColor: 'var(--admin-surface-2)'
   },
   viewHeroImage: {
     width: '100%',
@@ -779,12 +780,12 @@ const styles = {
     position: 'absolute',
     bottom: '10px',
     right: '10px',
-    backgroundColor: 'rgba(5, 5, 8, 0.75)',
-    border: '1px solid rgba(212, 175, 55, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '20px',
     padding: '4px 10px',
     fontSize: '11px',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     fontWeight: '600'
   },
   viewThumbGrid: {
@@ -799,7 +800,7 @@ const styles = {
     border: '2px solid transparent',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
-    backgroundColor: '#0D0D11'
+    backgroundColor: 'var(--admin-surface-2)'
   },
   viewThumbImg: {
     width: '100%',
@@ -807,81 +808,81 @@ const styles = {
     objectFit: 'cover'
   },
   viewCardBox: {
-    backgroundColor: '#0D0D11',
+    backgroundColor: 'var(--admin-surface-2)',
     padding: '18px',
     borderRadius: '12px',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
+    border: '1px solid var(--admin-border-subtle)',
     display: 'flex',
     flexDirection: 'column'
   },
   categoryBadge: {
     fontSize: '11px',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: '0.8px',
-    backgroundColor: 'rgba(212, 175, 55, 0.12)',
+    backgroundColor: 'var(--admin-gold-muted)',
     padding: '4px 10px',
     borderRadius: '14px',
-    border: '1px solid rgba(212, 175, 55, 0.25)'
+    border: '1px solid var(--admin-border-gold)'
   },
   subCategoryBadge: {
     fontSize: '11px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     fontWeight: '600',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'var(--admin-input-bg)',
     padding: '4px 10px',
     borderRadius: '14px'
   },
   viewTitle: {
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '22px',
     fontWeight: '700',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     margin: '0 0 10px 0'
   },
   viewDescription: {
     fontSize: '13px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     lineHeight: '1.6',
     margin: 0
   },
   cardHeaderTitle: {
     fontSize: '11px',
     fontWeight: '700',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     textTransform: 'uppercase',
     letterSpacing: '0.8px',
     marginBottom: '6px'
   },
   metaLabel: {
     fontSize: '11px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     display: 'block'
   },
   priceGold: {
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '24px',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     fontWeight: '700'
   },
   origPriceStrikethrough: {
     fontSize: '14px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-muted)',
     textDecoration: 'line-through'
   },
   discountPill: {
     fontSize: '11px',
     fontWeight: '700',
-    color: '#10B981',
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    color: 'var(--admin-success)',
+    backgroundColor: 'var(--admin-success-bg)',
     padding: '3px 8px',
     borderRadius: '10px',
-    border: '1px solid rgba(16, 185, 129, 0.3)'
+    border: '1px solid var(--admin-success)'
   },
   taxBadge: {
     fontSize: '11px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-muted)',
     display: 'flex',
     alignItems: 'center',
     gap: '4px'
@@ -889,13 +890,13 @@ const styles = {
   specValue: {
     fontSize: '15px',
     fontWeight: '600',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     display: 'block',
     marginTop: '4px'
   },
   viewMetadataBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    border: '1px solid rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-border-subtle)',
     borderRadius: '10px',
     padding: '12px 16px',
     display: 'flex',

@@ -481,6 +481,24 @@ export const orderAPI = {
 
 // ===== COUPON API =====
 export const couponAPI = {
+  getAll: async () => {
+    try {
+      const response = await fetch(`${API_BASE}/coupons`);
+      const data = await response.json();
+      if (data && Array.isArray(data.coupons)) {
+        return data;
+      } else if (Array.isArray(data)) {
+        return { success: true, coupons: data };
+      } else if (data && data.data && Array.isArray(data.data)) {
+        return { success: true, coupons: data.data };
+      }
+      return { success: true, coupons: [] };
+    } catch (error) {
+      console.error('Error fetching coupons:', error);
+      return { success: false, coupons: [], message: error.message };
+    }
+  },
+
   getCoupons: async () => {
     try {
       const response = await fetch(`${API_BASE}/coupons`);

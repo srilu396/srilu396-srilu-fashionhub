@@ -44,7 +44,7 @@ const OrdersManagement = () => {
       header: 'Order Reference',
       accessor: (row) => row.orderNumber || (row._id || row.id || '').slice(-6).toUpperCase(),
       render: (row) => (
-        <span style={{ fontWeight: '600', color: '#D4AF37', cursor: 'pointer' }} onClick={() => openDrawer(row)}>
+        <span style={{ fontWeight: '600', color: 'var(--admin-gold)', cursor: 'pointer' }} onClick={() => openDrawer(row)}>
           #{row.orderNumber || (row._id || row.id || '').slice(-6).toUpperCase()}
         </span>
       ),
@@ -55,10 +55,10 @@ const OrdersManagement = () => {
       accessor: (row) => row.user ? `${row.user.firstName || ''} ${row.user.lastName || ''}`.trim() : 'Guest',
       render: (row) => (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontWeight: '500', color: '#F9F6F0' }}>
+          <span style={{ fontWeight: '500', color: 'var(--admin-text-primary)' }}>
             {row.user?.firstName ? `${row.user.firstName} ${row.user.lastName || ''}` : row.shippingAddress?.fullName || 'Customer'}
           </span>
-          <span style={{ fontSize: '11px', color: '#A0A0AB' }}>
+          <span style={{ fontSize: '11px', color: 'var(--admin-text-secondary)' }}>
             {row.user?.email || row.shippingAddress?.email || 'No Email'}
           </span>
         </div>
@@ -86,7 +86,7 @@ const OrdersManagement = () => {
       accessor: 'totalAmount',
       align: 'right',
       render: (row) => (
-        <span style={{ fontWeight: '600', fontFamily: "'Playfair Display', serif", color: '#F9F6F0' }}>
+        <span style={{ fontWeight: '600', fontFamily: "var(--font-serif, 'Playfair Display', serif)", color: 'var(--admin-gold)' }}>
           ₹{Math.round(row.totalAmount || 0).toLocaleString('en-IN')}
         </span>
       ),
@@ -262,8 +262,8 @@ const styles = {
     zIndex: 1000
   },
   drawerContent: {
-    backgroundColor: '#16161A',
-    borderLeft: '1px solid rgba(212, 175, 55, 0.25)',
+    backgroundColor: 'var(--admin-modal-bg)',
+    borderLeft: '1px solid var(--admin-border-gold)',
     width: '100%',
     maxWidth: '460px',
     height: '100vh',
@@ -273,7 +273,7 @@ const styles = {
   },
   drawerHeader: {
     padding: '20px 24px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+    borderBottom: '1px solid var(--admin-border-subtle)',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center'
@@ -282,19 +282,19 @@ const styles = {
     fontSize: '11px',
     textTransform: 'uppercase',
     letterSpacing: '1px',
-    color: '#A0A0AB'
+    color: 'var(--admin-text-muted)'
   },
   drawerTitle: {
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '20px',
     fontWeight: '700',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     margin: 0
   },
   drawerClose: {
     background: 'none',
     border: 'none',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-muted)',
     fontSize: '24px',
     cursor: 'pointer'
   },
@@ -305,8 +305,8 @@ const styles = {
     gap: '20px'
   },
   sectionCard: {
-    backgroundColor: '#0D0D0E',
-    border: '1px solid rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-border-subtle)',
     borderRadius: '8px',
     padding: '16px'
   },
@@ -315,23 +315,23 @@ const styles = {
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: '0.8px',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     display: 'block',
     marginBottom: '8px'
   },
   statusSelect: {
     padding: '6px 12px',
-    backgroundColor: '#16161A',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '4px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '12px',
     outline: 'none',
     cursor: 'pointer'
   },
   detailText: {
     fontSize: '13px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     margin: '4px 0',
     lineHeight: '1.4'
   },
@@ -345,7 +345,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+    borderBottom: '1px solid var(--admin-border-subtle)',
     paddingBottom: '8px'
   },
   itemThumb: {
@@ -353,7 +353,7 @@ const styles = {
     height: '48px',
     objectFit: 'cover',
     borderRadius: '4px',
-    backgroundColor: '#000'
+    backgroundColor: 'var(--admin-input-bg)'
   },
   itemInfo: {
     flex: 1,
@@ -363,31 +363,31 @@ const styles = {
   itemName: {
     fontSize: '13px',
     fontWeight: '500',
-    color: '#F9F6F0'
+    color: 'var(--admin-text-primary)'
   },
   itemQty: {
     fontSize: '11px',
-    color: '#A0A0AB'
+    color: 'var(--admin-text-secondary)'
   },
   itemSubtotal: {
     fontSize: '13px',
     fontWeight: '600',
-    color: '#D4AF37'
+    color: 'var(--admin-gold)'
   },
   totalRow: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '16px 0',
-    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+    borderTop: '1px solid var(--admin-border-subtle)',
     fontSize: '14px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontWeight: '600'
   },
   totalAmount: {
-    fontFamily: "'Playfair Display', serif",
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
     fontSize: '22px',
-    color: '#D4AF37'
+    color: 'var(--admin-gold)'
   }
 };
 

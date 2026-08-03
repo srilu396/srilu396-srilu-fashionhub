@@ -6,6 +6,8 @@ import {
   CheckCircle2, KeyRound, ArrowRight, ShieldCheck 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Logo from '../components/common/Logo';
+import { useToast } from '../components/common/Toast/useToast';
 import './UnifiedLogin.css';
 
 const FASHION_IMAGES = [
@@ -30,6 +32,7 @@ const UnifiedLogin = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { loginAdmin, loginUser } = useAuth();
+  const toast = useToast();
 
   // Active Mode: 'login' | 'signup'
   const [activeTab, setActiveTab] = useState('login');
@@ -142,16 +145,18 @@ const UnifiedLogin = () => {
         const data = await res.json();
 
         if (data.success && data.token && data.user) {
-          setSuccessMsg('Account created successfully! Redirecting...');
+          toast.success('Welcome to SRILU FashionHub.', 'Account Created');
           setTimeout(() => {
             loginUser(data.user, data.token);
             navigate('/user/dashboard');
           }, 800);
         } else {
+          toast.error(data.message || 'Registration failed. Please check your details.', 'Registration Error');
           setError(data.message || 'Registration failed. Please check your details.');
         }
       } catch (err) {
         console.error('Registration error:', err);
+        toast.error('Unable to connect to server. Please check network connection.');
         setError('Unable to connect to server. Please check network connection.');
       } finally {
         setLoading(false);
@@ -172,7 +177,7 @@ const UnifiedLogin = () => {
 
         if (data.success && data.token && data.user) {
           const userRole = data.user.role;
-          setSuccessMsg('Welcome back! Redirecting...');
+          toast.success('Successfully signed in.', 'Welcome back!');
           
           setTimeout(() => {
             if (userRole === 'admin') {
@@ -184,11 +189,16 @@ const UnifiedLogin = () => {
             }
           }, 800);
         } else {
+          toast.error(data.message || 'Invalid email or password.', 'Authentication Failed');
           setError(data.message || 'Invalid email or password.');
         }
       } catch (err) {
         console.error('Login error:', err);
-        setError('Unable to connect to server. Please check network connection.');
+        const errorMessage = (err && err.name !== 'TypeError') 
+          ? (err.message || 'Login error occurred.') 
+          : 'Unable to connect to server. Please check network connection.';
+        toast.error(errorMessage);
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -379,8 +389,8 @@ const UnifiedLogin = () => {
           <div className="auth-form-card">
             {/* Header */}
             <div className="auth-brand-header">
-              <div className="auth-logo-badge">
-                <span>S</span>
+              <div style={{ marginBottom: '12px' }}>
+                <Logo variant="full" size="md" mode="gold" subtitle="LUXURY ATELIER" />
               </div>
               <h1 className="auth-title">
                 {activeTab === 'login' ? 'Welcome Back' : 'Create Account'}
@@ -418,17 +428,6 @@ const UnifiedLogin = () => {
                 className="auth-alert-error"
               >
                 <span>{error}</span>
-              </motion.div>
-            )}
-
-            {successMsg && (
-              <motion.div 
-                initial={{ opacity: 0, y: -6 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                className="auth-alert-success"
-              >
-                <CheckCircle2 size={16} />
-                <span>{successMsg}</span>
               </motion.div>
             )}
 

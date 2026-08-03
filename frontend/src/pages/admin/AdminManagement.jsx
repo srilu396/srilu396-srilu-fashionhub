@@ -6,13 +6,16 @@ import StatusBadge from '../../components/admin/StatusBadge';
 import ActionMenu from '../../components/admin/ActionMenu';
 import Drawer from '../../components/admin/Drawer';
 import Button from '../../components/admin/Button';
+import ConfirmationModal from '../../components/admin/ConfirmationModal';
 import { chatAPI } from '../../utils/api';
+import { useToast } from '../../components/common/Toast/useToast';
 import { 
   Pencil, UserX, UserCheck, Trash2, MessageCircle, 
   Send, CheckCheck, Eye, EyeOff, ShieldCheck, Mail, User, Clock, Plus
 } from 'lucide-react';
 
 const AdminManagement = () => {
+  const toast = useToast();
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -20,6 +23,11 @@ const AdminManagement = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Delete admin confirmation modal state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [adminToDelete, setAdminToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Admin Chat Drawer state
   const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
@@ -144,7 +152,7 @@ const AdminManagement = () => {
       const data = await res.json();
 
       if (data.success) {
-        setSuccessMsg('Admin account created successfully!');
+        toast.success('Admin account created successfully!', 'Admin Created');
         setFormData({
           firstName: '',
           lastName: '',
@@ -153,16 +161,15 @@ const AdminManagement = () => {
           password: '',
           permissions: ['products', 'orders', 'customers', 'coupons', 'admins']
         });
-        setTimeout(() => {
-          setModalOpen(false);
-          setSuccessMsg('');
-          fetchAdmins();
-        }, 1200);
+        setModalOpen(false);
+        fetchAdmins();
       } else {
+        toast.error(data.message || 'Failed to create admin account.', 'Create Admin Error');
         setError(data.message || 'Failed to create admin account.');
       }
     } catch (err) {
       console.error('Create admin error:', err);
+      toast.error('Network error. Please try again.');
       setError('Network error. Please try again.');
     } finally {
       setSubmitting(false);
@@ -184,38 +191,56 @@ const AdminManagement = () => {
       });
       const data = await res.json();
       if (data.success) {
+        toast.info(`Admin status updated successfully.`, 'Status Updated');
         fetchAdmins();
       } else {
-        alert(data.message || 'Failed to update admin status.');
+        toast.error(data.message || 'Failed to update admin status.');
       }
     } catch (err) {
       console.error('Status toggle error:', err);
     }
   };
 
-  const handleDeleteAdmin = async (adminId, isMainAdmin) => {
-    if (isMainAdmin) {
-      alert('Main Administrator account cannot be deleted.');
+  const openDeleteConfirmation = (admin) => {
+    if (admin.isMainAdmin) {
+      toast.warning('Main Administrator account cannot be deleted.', 'Action Restricted');
+      return;
+    }
+    setAdminToDelete(admin);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDeleteAdmin = async () => {
+    if (!adminToDelete) return;
+    if (adminToDelete.isMainAdmin) {
+      toast.warning('Main Administrator account cannot be deleted.', 'Action Restricted');
+      setDeleteModalOpen(false);
+      setAdminToDelete(null);
       return;
     }
 
-    if (!window.confirm('Are you sure you want to delete this admin account?')) return;
-
+    setDeleteLoading(true);
     try {
       const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
       const token = localStorage.getItem('adminToken');
-      const res = await fetch(`${API_BASE}/api/admin/admins/${adminId}`, {
+      const res = await fetch(`${API_BASE}/api/admin/admins/${adminToDelete._id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
       if (data.success) {
+        toast.success('Administrator account deleted successfully.', 'Admin Deleted');
         fetchAdmins();
       } else {
-        alert(data.message || 'Failed to delete admin account.');
+        toast.error(data.message || 'Failed to delete admin account.');
       }
     } catch (err) {
       console.error('Delete admin error:', err);
+      toast.error('Network error. Failed to delete admin account.');
+    } finally {
+      setDeleteLoading(false);
+      setDeleteModalOpen(false);
+      setAdminToDelete(null);
     }
   };
 
@@ -230,7 +255,7 @@ const AdminManagement = () => {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontWeight: '600', color: '#F9F6F0' }}>
+              <span style={{ fontWeight: '600', color: 'var(--admin-text-primary)' }}>
                 {row.firstName} {row.lastName}
               </span>
               {row.isMainAdmin ? (
@@ -239,7 +264,7 @@ const AdminManagement = () => {
                 <span style={styles.subBadge}>SUB ADMIN</span>
               )}
             </div>
-            <span style={{ fontSize: '11px', color: '#A0A0AB' }}>@{row.username}</span>
+            <span style={{ fontSize: '11px', color: 'var(--admin-text-secondary)' }}>@{row.username}</span>
           </div>
         </div>
       )
@@ -247,7 +272,7 @@ const AdminManagement = () => {
     {
       header: 'Email Address',
       accessor: 'email',
-      render: (row) => <span style={{ color: '#D4AF37' }}>{row.email}</span>
+      render: (row) => <span style={{ color: 'var(--admin-gold)' }}>{row.email}</span>
     },
     {
       header: 'Status',
@@ -263,21 +288,21 @@ const AdminManagement = () => {
           items={[
             {
               label: 'Direct Admin Chat',
-              icon: <MessageCircle size={14} color="#D4AF37" />,
+              icon: <MessageCircle size={14} color="var(--admin-gold)" />,
               onClick: () => openAdminChat(row)
             },
             ...(isMainAdminUser && !row.isMainAdmin ? [
               {
                 label: row.status === 'active' ? 'Deactivate Admin' : 'Activate Admin',
-                icon: row.status === 'active' ? <UserX size={14} color="#EF4444" /> : <UserCheck size={14} color="#10B981" />,
+                icon: row.status === 'active' ? <UserX size={14} color="var(--admin-danger)" /> : <UserCheck size={14} color="var(--admin-success, #10B981)" />,
                 danger: row.status === 'active',
                 onClick: () => handleToggleStatus(row._id, row.status)
               },
               {
                 label: 'Delete Admin',
-                icon: <Trash2 size={14} color="#EF4444" />,
+                icon: <Trash2 size={14} color="var(--admin-danger)" />,
                 danger: true,
-                onClick: () => handleDeleteAdmin(row._id, row.isMainAdmin)
+                onClick: () => openDeleteConfirmation(row)
               }
             ] : [])
           ]}
@@ -364,7 +389,7 @@ const AdminManagement = () => {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontWeight: '700', color: '#F9F6F0', fontSize: '15px' }}>
+                  <span style={{ fontWeight: '700', color: 'var(--admin-text-primary)', fontSize: '15px' }}>
                     {selectedAdminForChat.firstName} {selectedAdminForChat.lastName}
                   </span>
                   <span style={{ fontSize: '10px', padding: '2px 6px', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10B981', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>ONLINE</span>
@@ -428,7 +453,6 @@ const AdminManagement = () => {
             </div>
 
             {error && <div style={styles.errorAlert}>{error}</div>}
-            {successMsg && <div style={styles.successAlert}>{successMsg}</div>}
 
             <form onSubmit={handleCreateAdmin} style={styles.form}>
               <div style={styles.nameRow}>
@@ -541,6 +565,25 @@ const AdminManagement = () => {
           </div>
         </div>
       )}
+      {/* Confirmation Delete Modal for Admin Accounts */}
+      <ConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setAdminToDelete(null);
+        }}
+        onConfirm={handleConfirmDeleteAdmin}
+        title="Delete Administrator Account"
+        message={
+          adminToDelete
+            ? `Are you sure you want to delete ${adminToDelete.firstName || ''} ${adminToDelete.lastName || ''} (@${adminToDelete.username || ''})? This will permanently remove their admin account from this portal.`
+            : "Are you sure you want to delete this administrator account? This step cannot be reversed."
+        }
+        confirmText="Delete Admin"
+        cancelText="Cancel"
+        danger={true}
+        loading={deleteLoading}
+      />
     </AdminLayout>
   );
 };
@@ -560,9 +603,9 @@ const styles = {
     width: '36px',
     height: '36px',
     borderRadius: '50%',
-    backgroundColor: 'rgba(212, 175, 55, 0.15)',
-    color: '#D4AF37',
-    border: '1px solid rgba(212, 175, 55, 0.3)',
+    backgroundColor: 'var(--admin-gold-muted)',
+    color: 'var(--admin-gold)',
+    border: '1px solid var(--admin-border-gold)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -573,23 +616,24 @@ const styles = {
     fontSize: '9px',
     padding: '2px 6px',
     borderRadius: '4px',
-    backgroundColor: 'rgba(212, 175, 55, 0.2)',
-    color: '#D4AF37',
-    border: '1px solid rgba(212, 175, 55, 0.4)',
+    backgroundColor: 'var(--admin-gold-muted)',
+    color: 'var(--admin-gold)',
+    border: '1px solid var(--admin-border-gold)',
     fontWeight: '700'
   },
   subBadge: {
     fontSize: '9px',
     padding: '2px 6px',
     borderRadius: '4px',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    color: '#A0A0AB',
+    backgroundColor: 'var(--admin-input-bg)',
+    color: 'var(--admin-text-secondary)',
+    border: '1px solid var(--admin-border-subtle)',
     fontWeight: '600'
   },
   adminChatCard: {
     padding: '14px 16px',
-    backgroundColor: '#0D0D11',
-    border: '1px solid rgba(212, 175, 55, 0.3)',
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '10px',
     display: 'flex',
     alignItems: 'center',
@@ -599,9 +643,9 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     height: '420px',
-    backgroundColor: '#0A0A0D',
+    backgroundColor: 'var(--admin-card-bg)',
     borderRadius: '10px',
-    border: '1px solid rgba(212, 175, 55, 0.2)',
+    border: '1px solid var(--admin-border-gold)',
     overflow: 'hidden'
   },
   chatFeed: {
@@ -632,26 +676,26 @@ const styles = {
     lineHeight: '1.4'
   },
   chatBubbleSelf: {
-    backgroundColor: '#1C1917',
-    border: '1px solid rgba(212, 175, 55, 0.4)',
-    color: '#F9F6F0',
+    backgroundColor: 'var(--admin-gold-muted)',
+    border: '1px solid var(--admin-border-gold)',
+    color: 'var(--admin-text-primary)',
     borderBottomRightRadius: '2px'
   },
   chatBubblePeer: {
-    backgroundColor: '#18181B',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    color: '#E4E4E7',
+    backgroundColor: 'var(--admin-surface-2)',
+    border: '1px solid var(--admin-border-subtle)',
+    color: 'var(--admin-text-primary)',
     borderBottomLeftRadius: '2px'
   },
   chatSender: {
     fontSize: '10px',
     fontWeight: '700',
-    color: '#D4AF37',
+    color: 'var(--admin-gold)',
     marginBottom: '2px',
     textTransform: 'uppercase'
   },
   chatText: {
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     whiteSpace: 'pre-wrap'
   },
   chatMeta: {
@@ -660,23 +704,23 @@ const styles = {
     justifyContent: 'flex-end',
     gap: '4px',
     fontSize: '10px',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-secondary)',
     marginTop: '4px'
   },
   chatInputRow: {
     padding: '12px',
-    backgroundColor: '#121217',
-    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'var(--admin-card-bg)',
+    borderTop: '1px solid var(--admin-border-subtle)',
     display: 'flex',
     gap: '8px'
   },
   chatInputField: {
     flex: 1,
     padding: '10px 14px',
-    backgroundColor: '#070709',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '20px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '13px',
     outline: 'none'
   },
@@ -684,8 +728,8 @@ const styles = {
     width: '38px',
     height: '38px',
     borderRadius: '50%',
-    backgroundColor: '#D4AF37',
-    color: '#0D0D0E',
+    backgroundColor: 'var(--admin-gold)',
+    color: 'var(--active-pill-text)',
     border: 'none',
     display: 'flex',
     alignItems: 'center',
@@ -702,12 +746,12 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 1000,
+    zIndex: 'var(--z-modal, 9999)',
     padding: '20px'
   },
   modalContent: {
-    backgroundColor: '#16161A',
-    border: '1px solid rgba(212, 175, 55, 0.35)',
+    backgroundColor: 'var(--admin-modal-bg)',
+    border: '1px solid var(--admin-border-gold)',
     borderRadius: '12px',
     width: '100%',
     maxWidth: '460px',
@@ -722,30 +766,30 @@ const styles = {
   modalTitle: {
     fontSize: '18px',
     fontWeight: '600',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     margin: 0,
-    fontFamily: "'Playfair Display', serif"
+    fontFamily: "var(--font-serif, 'Playfair Display', serif)"
   },
   modalClose: {
     background: 'none',
     border: 'none',
-    color: '#A0A0AB',
+    color: 'var(--admin-text-muted)',
     fontSize: '24px',
     cursor: 'pointer'
   },
   errorAlert: {
-    backgroundColor: 'rgba(220, 38, 38, 0.12)',
-    border: '1px solid rgba(220, 38, 38, 0.3)',
-    color: '#F87171',
+    backgroundColor: 'var(--admin-danger-bg)',
+    border: '1px solid var(--admin-danger)',
+    color: 'var(--admin-danger)',
     padding: '10px',
     borderRadius: '6px',
     fontSize: '12px',
     marginBottom: '16px'
   },
   successAlert: {
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    border: '1px solid rgba(16, 185, 129, 0.3)',
-    color: '#34D399',
+    backgroundColor: 'var(--admin-success-bg)',
+    border: '1px solid var(--admin-success)',
+    color: 'var(--admin-success)',
     padding: '10px',
     borderRadius: '6px',
     fontSize: '12px',
@@ -771,16 +815,16 @@ const styles = {
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: '0.8px',
-    color: '#D4AF37'
+    color: 'var(--admin-gold)'
   },
   input: {
     width: '100%',
     boxSizing: 'border-box',
     padding: '11px 12px',
-    backgroundColor: 'rgba(13, 13, 14, 0.7)',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'var(--admin-input-bg)',
+    border: '1px solid var(--admin-input-border)',
     borderRadius: '6px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     fontSize: '13px',
     outline: 'none'
   },
@@ -795,14 +839,14 @@ const styles = {
     alignItems: 'center',
     gap: '6px',
     fontSize: '12px',
-    color: '#F9F6F0',
+    color: 'var(--admin-text-primary)',
     cursor: 'pointer'
   },
   submitBtn: {
     width: '100%',
     padding: '12px',
-    backgroundColor: '#D4AF37',
-    color: '#0D0D0E',
+    backgroundColor: 'var(--admin-gold)',
+    color: 'var(--active-pill-text)',
     border: 'none',
     borderRadius: '6px',
     fontSize: '13px',

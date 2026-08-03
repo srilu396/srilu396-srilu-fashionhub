@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 import AnimatedBackground from '../../components/AnimatedBackground';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { useToast } from '../../components/common/Toast/useToast';
 import { User, Mail, Phone, MapPin, Calendar, Edit, Save, ShoppingBag, Heart, Package, LogOut } from 'lucide-react';
 
 const UserProfile = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [stats, setStats] = useState({
@@ -72,7 +74,7 @@ const UserProfile = () => {
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
-      alert('Failed to load profile');
+      toast.error('Failed to load profile');
     } finally {
       setLoading(false);
     }
@@ -105,13 +107,13 @@ const UserProfile = () => {
       if (data.success) {
         setUser(data.user);
         setIsEditing(false);
-        alert('Profile updated successfully!');
+        toast.success('Profile updated successfully!', 'Profile Saved');
       } else {
-        alert(data.message || 'Failed to update profile');
+        toast.error(data.message || 'Failed to update profile');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Failed to update profile');
+      toast.error('Failed to update profile');
     } finally {
       setSaving(false);
     }

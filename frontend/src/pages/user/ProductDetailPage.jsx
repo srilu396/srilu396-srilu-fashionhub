@@ -6,12 +6,14 @@ import Header from '../../components/Header';
 import { addToCart } from '../../redux/slices/cartSlice';
 import { addToWishlist, removeFromWishlist } from '../../redux/slices/wishlistSlice';
 import { productsData } from '../../data/products';
+import { useToast } from '../../components/common/Toast/useToast';
 
 const ProductDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
+  const toast = useToast();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -90,7 +92,7 @@ const ProductDetailPage = () => {
   const handleAddToCart = () => {
     const userToken = localStorage.getItem('userToken');
     if (!userToken) {
-      alert('Please log in to add items to cart');
+      toast.warning('Please log in to add items to cart', 'Authentication Required');
       navigate('/login');
       return;
     }
@@ -107,6 +109,7 @@ const ProductDetailPage = () => {
     };
 
     dispatch(addToCart({ product: cartProduct, quantity }));
+    toast.success(`"${product.name}" added to cart!`, 'Cart Updated');
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
   };
@@ -114,13 +117,14 @@ const ProductDetailPage = () => {
   const handleWishlist = () => {
     const userToken = localStorage.getItem('userToken');
     if (!userToken) {
-      alert('Please log in to manage your wishlist');
+      toast.warning('Please log in to manage your wishlist', 'Authentication Required');
       navigate('/login');
       return;
     }
 
     if (isWishlisted) {
       dispatch(removeFromWishlist(pId));
+      toast.info(`"${product.name}" removed from wishlist`);
     } else {
       const wishlistProduct = {
         _id: pId,
