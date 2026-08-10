@@ -1,0 +1,194 @@
+/* ═════════════════════════════════════════════════════════════════════
+   STOREFRONT GLOBAL STYLES & LUXURY HERO ANIMATIONS / CONTRAST FIX
+═════════════════════════════════════════════════════════════════════ */
+
+@import '../components/common/SectionCurveDivider.css';
+
+/* Keyframe Animations */
+@keyframes heroFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes heroGlowPulse {
+  0%, 100% {
+    box-shadow: 0 8px 24px rgba(222, 129, 99, 0.35);
+  }
+  50% {
+    box-shadow: 0 12px 32px rgba(222, 129, 99, 0.55);
+  }
+}
+
+/* Exact Hero Background Image (Vivid 100% Color, Shifted Text, High Contrast) */
+.hero-3d-wrapper {
+  background: url('../assets/hero_dashboard_bg.png') no-repeat center center / cover;
+  padding: 4.5rem 2rem 7.5rem;
+  position: relative;
+  min-height: 640px;
+  overflow: hidden;
+}
+
+.hero-3d-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding-left: 3.5rem; /* Shift text away from left corner */
+  display: block;
+}
+
+.hero-content-left {
+  max-width: 560px;
+  background: transparent;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+}
+
+/* Staggered Entrance Animations */
+.hero-eyebrow {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #5E3D28;
+  margin-bottom: 1.1rem;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9);
+  animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+.hero-main-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 3.8rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #120D0B;
+  margin: 0 0 1.3rem 0;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.95), 0 2px 12px rgba(0, 0, 0, 0.12);
+  animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+}
+
+.hero-highlight-word {
+  color: #DE8163;
+  font-style: italic;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9);
+}
+
+.hero-description {
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: #2C1E17;
+  font-weight: 600;
+  max-width: 500px;
+  margin-bottom: 2.2rem;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9);
+  animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+}
+
+.btn-shop-collection {
+  background: #DE8163;
+  color: #FFF;
+  padding: 0.95rem 2.5rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  box-shadow: 0 8px 24px rgba(222, 129, 99, 0.35);
+  transition: all 0.3s ease;
+  margin-bottom: 3rem;
+  animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.55s both, heroGlowPulse 3s infinite 1.5s ease-in-out;
+}
+
+.btn-shop-collection:hover {
+  background: #C86F52;
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 14px 32px rgba(222, 129, 99, 0.5);
+}
+
+/* Trust Bar - All 5 Items on ONE SINGLE LINE */
+.hero-trust-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: nowrap; /* Forces one line */
+  gap: 1.4rem;
+  padding-top: 1.5rem;
+  border-top: 1.5px solid rgba(176, 125, 58, 0.3);
+  white-space: nowrap;
+  animation: heroFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.7s both;
+}
+
+.trust-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.78rem;
+  color: #120D0B;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.trust-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #FAF3EA;
+  border: 1.5px solid #C98E5C;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9A6230;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  transition: transform 0.25s ease;
+}
+
+.trust-item:hover .trust-icon-box {
+  transform: scale(1.12);
+  background: #C98E5C;
+  color: #FFF;
+}
+
+/* Category Section Overlap Spacing */
+.category-section-container {
+  padding-top: 2.2rem;
+}
+
+.category-header-wrap .section-title-text {
+  position: relative;
+  z-index: 5;
+}
+
+/* Responsive Indentation */
+@media (max-width: 1024px) {
+  .hero-3d-container {
+    padding-left: 1.5rem;
+  }
+  .hero-main-title {
+    font-size: 3.2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-3d-container {
+    padding-left: 0.5rem;
+  }
+  .hero-main-title {
+    font-size: 2.6rem;
+  }
+  .hero-trust-bar {
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+}

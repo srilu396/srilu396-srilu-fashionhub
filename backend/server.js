@@ -309,6 +309,16 @@ app.use((err, req, res, next) => {
 });
 
 // ===== Start Server =====
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`❌ Error: Port ${PORT} is already in use.`);
+    console.error(`👉 Run 'npx kill-port ${PORT}' or 'kill -9 <PID>' to free the port.`);
+    process.exit(1);
+  } else {
+    console.error('Server error:', err);
+  }
+});
+
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 HTTP: http://localhost:${PORT}`);

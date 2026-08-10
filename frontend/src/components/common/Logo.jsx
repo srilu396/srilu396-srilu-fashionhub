@@ -28,27 +28,28 @@ const Logo = ({
     switch (mode) {
       case 'gold':
         return {
-          titleColor: 'var(--admin-gold)',
-          subColor: 'var(--admin-text-muted)',
+          titleColor: '#D4AF37',
+          subColor: '#81756E',
           iconGradientId: 'logo-gold-grad'
         };
       case 'light':
+      case 'store':
         return {
-          titleColor: 'var(--admin-text-primary)',
-          subColor: 'var(--admin-text-secondary)',
-          iconGradientId: 'logo-light-grad'
+          titleColor: '#2D2926',
+          subColor: '#81756E',
+          iconGradientId: 'logo-gold-grad'
         };
       case 'dark':
         return {
-          titleColor: 'var(--admin-text-primary)',
-          subColor: 'var(--admin-text-secondary)',
+          titleColor: '#FDF9F3',
+          subColor: '#E9B6A5',
           iconGradientId: 'logo-dark-grad'
         };
       case 'auto':
       default:
         return {
-          titleColor: 'var(--admin-text-primary)',
-          subColor: 'var(--admin-gold)',
+          titleColor: '#2D2926',
+          subColor: '#81756E',
           iconGradientId: 'logo-auto-grad'
         };
     }
