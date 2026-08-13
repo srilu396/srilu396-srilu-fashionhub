@@ -115,7 +115,7 @@ const EXHIBITION_SCENES = [
     title: 'Evenings That Last',
     quote: '“Memories woven in silk and gold thread.”',
     description: 'Bespoke zardozi gowns and royal sherwanis engineered to illuminate grand receptions and moonlight celebrations.',
-    image: '/occasion_gala.png',
+    image: 'occasion_gala.png',
     specs: ['Hand Embroidery', 'Royal Metallic Accents', 'Gala Silhouette'],
     linkText: 'View Eveningwear'
   },
