@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -8,15 +8,12 @@ import {
   ArrowRight,
   ShieldCheck,
   RefreshCw,
-  Lock,
   Award,
   Headphones,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
   Menu,
   X,
-  Mail,
   Gift,
   Globe,
   MessageSquare
@@ -24,129 +21,89 @@ import {
 import Logo from '../../components/common/Logo';
 import ProductCard from '../../components/ProductCard';
 import { fetchWishlist } from '../../redux/slices/wishlistSlice';
-import { productsData } from '../../data/products';
-import { categoryAPI } from '../../utils/api';
 import SectionCurveDivider from '../../components/common/SectionCurveDivider';
-import { useToast } from '../../components/common/Toast/useToast';
+import { CategorySkeletonRow, ProductSkeletonGrid } from '../../components/common/DashboardSkeletons';
+import {
+  useCurrentUser,
+  useCategories,
+  useProducts,
+  useWishlistQuery,
+  useCartQuery,
+  useUnreadChatCount
+} from '../../hooks/useDashboardQueries';
 import './UserDashboard.css';
 import '../../styles/store.css';
 
 const UserDashboard = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const toast = useToast();
   const categoryScrollRef = useRef(null);
 
-  const [user, setUser] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
-  const [newsletterEmail, setNewsletterEmail] = useState('');
-  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [userState, setUserState] = useState(null);
 
-  const { items: wishlistItems } = useSelector((state) => state.wishlist || { items: [] });
-  const { items: cartItems } = useSelector((state) => state.cart || { items: [] });
+  // 1. TanStack Query hooks (independent & concurrent)
+  const { data: storedUser } = useCurrentUser();
+  const userId = userState?._id || userState?.id || storedUser?._id || storedUser?.id;
 
-  const cartCount = Array.isArray(cartItems) ? cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0) : 0;
-  const wishlistCount = Array.isArray(wishlistItems) ? wishlistItems.length : 0;
+  const { data: departments = [], isLoading: categoriesLoading } = useCategories();
+  const { data: products = [], isLoading: productsLoading } = useProducts(selectedCategory, 12);
+  const { data: wishlistData = [] } = useWishlistQuery(userId);
+  const { data: cartData = [] } = useCartQuery(userId);
+  const { data: unreadChatCount = 0 } = useUnreadChatCount(userId);
 
-  // Fetch unread chat count for the dashboard chat badge
-  const fetchUnreadCount = useCallback(async () => {
-    try {
-      const u = localStorage.getItem('user');
-      const parsed = u && u !== 'undefined' ? JSON.parse(u) : null;
-      const cId = parsed?._id || parsed?.id;
-      if (!cId) return;
-      const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
-      const res = await fetch(`${API_BASE}/api/chat/unread/user/${cId}`);
-      const data = await res.json();
-      if (data.success) setUnreadChatCount(data.unreadCount || 0);
-    } catch (_) {}
-  }, []);
+  // Redux store integration for backward compatibility with existing Redux-based components
+  const { items: reduxWishlist } = useSelector((state) => state.wishlist || { items: [] });
+  const { items: reduxCart } = useSelector((state) => state.cart || { items: [] });
 
+  const cartItemsCount = Array.isArray(reduxCart) && reduxCart.length > 0
+    ? reduxCart.reduce((sum, item) => sum + (item.quantity || 1), 0)
+    : (Array.isArray(cartData) ? cartData.reduce((sum, item) => sum + (item.quantity || 1), 0) : 0);
+
+  const wishlistItemsCount = Array.isArray(reduxWishlist) && reduxWishlist.length > 0
+    ? reduxWishlist.length
+    : (Array.isArray(wishlistData) ? wishlistData.length : 0);
+
+  // Initial user check & state setup
   useEffect(() => {
     const userToken = localStorage.getItem('userToken');
-    let storedUser = null;
-    try {
-      const u = localStorage.getItem('user');
-      if (u && u !== 'undefined') storedUser = JSON.parse(u);
-    } catch (_) {}
+    let u = storedUser;
+    if (!u) {
+      try {
+        const raw = localStorage.getItem('user');
+        if (raw && raw !== 'undefined') u = JSON.parse(raw);
+      } catch (_) {}
+    }
 
-    if (!userToken || !storedUser) {
+    if (!userToken || !u) {
       navigate('/login');
       return;
     }
 
-    setUser(storedUser);
-    fetchData(userToken);
-  }, [navigate]);
+    setUserState(u);
+  }, [navigate, storedUser]);
 
-  // Unread count polling + event listener
+  // Non-blocking Redux synchronization
   useEffect(() => {
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 15000);
-    const handleUpdate = () => fetchUnreadCount();
-    window.addEventListener('updateUserChatUnread', handleUpdate);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('updateUserChatUnread', handleUpdate);
-    };
-  }, [fetchUnreadCount]);
+    if (userId) {
+      dispatch(fetchWishlist());
+    }
+  }, [dispatch, userId]);
 
-  // Listen for profile updates dispatched from UserProfile page
+  // Profile update storage event listener
   useEffect(() => {
     const handleUserUpdate = (e) => {
       if (e.key === 'user' && e.newValue && e.newValue !== 'undefined') {
         try {
-          setUser(JSON.parse(e.newValue));
+          setUserState(JSON.parse(e.newValue));
         } catch (_) {}
       }
     };
     window.addEventListener('storage', handleUserUpdate);
     return () => window.removeEventListener('storage', handleUserUpdate);
   }, []);
-
-
-  const fetchData = async (token) => {
-    setLoading(true);
-    const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
-
-    try {
-      const [pRes, deptRes] = await Promise.all([
-        fetch(`${API_BASE}/api/products`).then(r => r.json()).catch(() => ({})),
-        categoryAPI.getAll(true).catch(() => null)
-      ]);
-
-      let prods = [];
-      if (pRes && pRes.success && Array.isArray(pRes.products)) {
-        prods = pRes.products;
-      } else if (Array.isArray(pRes)) {
-        prods = pRes;
-      }
-      setProducts(prods.length > 0 ? prods : productsData);
-
-      if (deptRes && deptRes.success) {
-        setDepartments(deptRes.departments || deptRes.categories || []);
-      }
-
-      dispatch(fetchWishlist());
-    } catch (err) {
-      console.error('Error fetching storefront data:', err);
-      setProducts(productsData);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleNewsletterSubmit = (e) => {
-    e.preventDefault();
-    if (!newsletterEmail) return;
-    toast.success('Thank you for subscribing to SRILU FashionHub!');
-    setNewsletterEmail('');
-  };
 
   const scrollToCategories = () => {
     const el = document.getElementById('shop-by-category');
@@ -199,10 +156,11 @@ const UserDashboard = () => {
   });
 
   const displayedProducts = filteredProducts.slice(carouselIndex, carouselIndex + 6);
+  const activeUser = userState || storedUser;
 
   return (
     <div className="storefront-root">
-      {/* 1. LIGHT LUXURY NAVIGATION HEADER (Matches Image 2 Header) */}
+      {/* 1. LIGHT LUXURY NAVIGATION HEADER */}
       <header className="light-luxury-header">
         <div className="light-nav-container">
           <Logo variant="full" size="sm" mode="dark" subtitle="FASHION HUB" to="/user/dashboard" />
@@ -221,7 +179,7 @@ const UserDashboard = () => {
 
           <div className="nav-actions-right">
             {(() => {
-              const userAvatar = user?.avatarUrl || user?.profileImage || user?.avatar || user?.image || localStorage.getItem('userProfileAvatar');
+              const userAvatar = activeUser?.avatarUrl || activeUser?.profileImage || activeUser?.avatar || activeUser?.image || localStorage.getItem('userProfileAvatar');
               return (
                 <button className="nav-icon-btn" title="Account" onClick={() => navigate('/user/profile')} style={{ padding: userAvatar ? '3px' : undefined }}>
                   {userAvatar ? (
@@ -239,7 +197,7 @@ const UserDashboard = () => {
 
             <button className="nav-icon-btn" title="Wishlist" onClick={() => navigate('/user/wishlist')}>
               <Heart size={19} />
-              {wishlistCount > 0 && <span className="nav-cart-badge">{wishlistCount}</span>}
+              {wishlistItemsCount > 0 && <span className="nav-cart-badge">{wishlistItemsCount}</span>}
             </button>
 
             <button
@@ -258,7 +216,7 @@ const UserDashboard = () => {
 
             <button className="nav-icon-btn" title="Cart" onClick={() => navigate('/user/cart')}>
               <ShoppingBag size={19} />
-              {cartCount > 0 && <span className="nav-cart-badge">{cartCount}</span>}
+              {cartItemsCount > 0 && <span className="nav-cart-badge">{cartItemsCount}</span>}
             </button>
 
             <button className="mobile-toggle-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
@@ -269,7 +227,7 @@ const UserDashboard = () => {
       </header>
 
       <main>
-        {/* 2. 3D HERO SECTION WITH FULL BOUTIQUE BACKGROUND IMAGE */}
+        {/* 2. 3D HERO SECTION */}
         <section className="hero-3d-wrapper">
           <div className="hero-3d-container">
             <div className="hero-content-left">
@@ -319,11 +277,10 @@ const UserDashboard = () => {
             </div>
           </div>
 
-          {/* Premium Reusable Section Curve Divider */}
           <SectionCurveDivider nextSectionClass="shop-by-category" />
         </section>
 
-        {/* 3. SHOP BY DEPARTMENT SECTION (Luxury Fashion Editorial Showcase) */}
+        {/* 3. SHOP BY DEPARTMENT SECTION */}
         <section id="shop-by-category" className="category-section-container">
           <div className="category-title-block">
             <h2 className="category-editorial-heading">SHOP BY DEPARTMENT</h2>
@@ -342,13 +299,14 @@ const UserDashboard = () => {
             </div>
           </div>
 
-          {departments.length === 0 && !loading ? (
+          {categoriesLoading ? (
+            <CategorySkeletonRow count={5} />
+          ) : departments.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
               No departments available yet.
             </div>
           ) : (
             <div className="category-carousel-outer-wrapper">
-              {/* Outer Left Side Arrow Button */}
               <button
                 className="category-side-arrow-btn side-arrow-left"
                 onClick={scrollCategoryLeft}
@@ -387,7 +345,6 @@ const UserDashboard = () => {
                 })}
               </div>
 
-              {/* Outer Right Side Arrow Button */}
               <button
                 className="category-side-arrow-btn side-arrow-right"
                 onClick={scrollCategoryRight}
@@ -400,10 +357,9 @@ const UserDashboard = () => {
           )}
         </section>
 
-        {/* 4. PROMOTIONAL BANNERS SECTION (Exact Replica of Reference Image) */}
+        {/* 4. PROMOTIONAL BANNERS SECTION */}
         <section className="promo-banners-container">
           <div className="promo-grid">
-            {/* Banner 1: New Arrivals */}
             <div className="promo-card promo-card-pink">
               <div className="promo-card-content">
                 <span className="promo-tag">NEW ARRIVALS</span>
@@ -414,7 +370,6 @@ const UserDashboard = () => {
               </div>
             </div>
 
-            {/* Banner 2: Exclusive 40% Off */}
             <div className="promo-card promo-card-champagne">
               <div className="promo-card-content">
                 <span className="promo-tag">EXCLUSIVE OFFER</span>
@@ -433,7 +388,6 @@ const UserDashboard = () => {
               </div>
             </div>
 
-            {/* Banner 3: Exclusive Offers & Coupons */}
             <div className="promo-card promo-card-rose">
               <div className="promo-card-content">
                 <span className="promo-tag">SPECIAL SAVINGS</span>
@@ -515,10 +469,8 @@ const UserDashboard = () => {
             </div>
           </div>
 
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '4rem 0' }}>
-              <p>Loading products catalog...</p>
-            </div>
+          {productsLoading ? (
+            <ProductSkeletonGrid count={6} />
           ) : displayedProducts.length > 0 ? (
             <div className="best-sellers-carousel-outer">
               {filteredProducts.length > 6 && (
@@ -549,7 +501,6 @@ const UserDashboard = () => {
 
       {/* 7. RICH LUXURY FOOTER */}
       <footer className="luxury-footer-wrapper">
-
         <div className="main-footer-body">
           <div>
             <Logo variant="full" size="md" mode="gold" subtitle="FASHION HUB" to="/user/dashboard" />

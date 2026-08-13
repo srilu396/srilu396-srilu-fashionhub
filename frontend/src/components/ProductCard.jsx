@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import { useQueryClient } from '@tanstack/react-query';
 import { ShoppingCart, Star, Heart } from 'lucide-react';
 import { addToCart } from '../redux/slices/cartSlice';
 import { addToWishlist, removeFromWishlist } from '../redux/slices/wishlistSlice';
@@ -11,6 +12,7 @@ const ProductCard = ({ product }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
+  const queryClient = useQueryClient();
 
   const { items: wishlistItems } = useSelector((state) => state.wishlist || { items: [] });
   
@@ -53,7 +55,10 @@ const ProductCard = ({ product }) => {
     };
 
     dispatch(addToCart({ product: cartProduct, quantity: 1 }))
-      .then(() => toast.success(`"${product.name}" added to cart!`, 'Cart Updated'))
+      .then(() => {
+        toast.success(`"${product.name}" added to cart!`, 'Cart Updated');
+        queryClient.invalidateQueries({ queryKey: ['cart'] });
+      })
       .catch((err) => console.error('Cart add error:', err));
   };
 
@@ -70,6 +75,7 @@ const ProductCard = ({ product }) => {
 
     if (isWishlisted) {
       dispatch(removeFromWishlist(id));
+      queryClient.invalidateQueries({ queryKey: ['wishlist'] });
       toast.info(`"${product.name}" removed from wishlist`);
     } else {
       const wishlistProduct = {
@@ -82,6 +88,7 @@ const ProductCard = ({ product }) => {
         rating: product.rating || 4.5
       };
       dispatch(addToWishlist(wishlistProduct));
+      queryClient.invalidateQueries({ queryKey: ['wishlist'] });
       toast.success(`"${product.name}" added to wishlist!`, 'Wishlist Saved');
     }
   };
@@ -94,6 +101,7 @@ const ProductCard = ({ product }) => {
             src={mainImage}
             alt={product.name || 'Product'}
             className="product-card-img"
+            loading="lazy"
             onError={(e) => {
               e.target.src = 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&auto=format&fit=crop&q=80';
             }}

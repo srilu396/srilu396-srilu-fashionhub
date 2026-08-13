@@ -1,0 +1,90 @@
+.skeleton-pulse {
+  background: linear-gradient(90deg, #f0ece9 25%, #e6e0dc 50%, #f0ece9 75%);
+  background-size: 200% 100%;
+  animation: skeletonPulse 1.5s infinite ease-in-out;
+  border-radius: 4px;
+}
+
+@keyframes skeletonPulse {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.category-skeleton-grid {
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: hidden;
+  padding: 1rem 0;
+}
+
+.category-skeleton-card {
+  min-width: 220px;
+  width: 220px;
+  height: 280px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.product-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.8rem;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1rem 0;
+}
+
+.product-skeleton-card {
+  height: 380px;
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  border: 1px solid #f0e6e0;
+}
+
+.product-skeleton-img {
+  width: 100%;
+  height: 220px;
+  border-radius: 8px;
+}
+
+.product-skeleton-line-long {
+  width: 80%;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.product-skeleton-line-short {
+  width: 40%;
+  height: 14px;
+  border-radius: 4px;
+}
+
+.product-skeleton-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+}
+
+.product-skeleton-price {
+  width: 30%;
+  height: 20px;
+  border-radius: 4px;
+}
+
+.product-skeleton-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}

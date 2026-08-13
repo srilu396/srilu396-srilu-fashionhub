@@ -5,7 +5,19 @@ import { store } from './redux/store';
 import { AuthProvider } from './context/AuthContext';
 import { ProductProvider } from './context/ProductContext'; 
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from './components/common/Toast/ToastProvider';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 2 * 60 * 1000, // 2 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 // Import all user pages
 import LandingPage from './pages/LandingPage';
@@ -302,9 +314,11 @@ const AppContent = () => {
 // Main App Component with Redux Provider
 function App() {
   return (
-    <Provider store={store}>
-      <AppContent />
-    </Provider>
+    <QueryClientProvider client={queryClient}>
+      <Provider store={store}>
+        <AppContent />
+      </Provider>
+    </QueryClientProvider>
   );
 }
 
