@@ -3,7 +3,7 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import PageHeader from '../../components/admin/PageHeader';
 import StatusBadge from '../../components/admin/StatusBadge';
 import { useAuth } from '../../context/AuthContext';
-import { userAPI } from '../../utils/api';
+import { userAPI, resolveProfileImage } from '../../utils/api';
 import { useToast } from '../../components/common/Toast/useToast';
 import { Eye, EyeOff, Upload, Trash2, Camera } from 'lucide-react';
 
@@ -11,6 +11,7 @@ const AdminProfile = () => {
   const { adminUser, updateAdminUser } = useAuth();
   const toast = useToast();
   const fileInputRef = useRef(null);
+  const [avatarImgError, setAvatarImgError] = useState(false);
 
   const [notice, setNotice] = useState({ text: '', type: '' });
   const [profileLoading, setProfileLoading] = useState(false);
@@ -36,6 +37,7 @@ const AdminProfile = () => {
 
   useEffect(() => {
     if (adminUser) {
+      setAvatarImgError(false);
       setProfileData({
         firstName: adminUser.firstName || 'Srilu',
         lastName: adminUser.lastName || 'Admin',
@@ -63,10 +65,15 @@ const AdminProfile = () => {
     const reader = new FileReader();
     reader.onloadend = () => {
       const dataUrl = reader.result;
+      setAvatarImgError(false);
       setProfileData(prev => ({ ...prev, avatarUrl: dataUrl }));
 
       const updated = { ...profileData, avatarUrl: dataUrl };
+      localStorage.setItem('adminProfileAvatar', dataUrl);
       if (updateAdminUser) updateAdminUser(updated);
+
+      window.dispatchEvent(new StorageEvent('storage', { key: 'adminProfileAvatar', newValue: dataUrl }));
+      window.dispatchEvent(new CustomEvent('adminUserUpdated', { detail: updated }));
 
       userAPI.updateProfile({ avatarUrl: dataUrl }).catch(err => console.error('Error syncing admin avatar:', err));
       toast.success('Profile photo uploaded successfully.', 'Photo Updated');
@@ -78,7 +85,11 @@ const AdminProfile = () => {
   const handleRemoveAvatar = () => {
     setProfileData(prev => ({ ...prev, avatarUrl: '' }));
     const updated = { ...profileData, avatarUrl: '' };
+    localStorage.removeItem('adminProfileAvatar');
     if (updateAdminUser) updateAdminUser(updated);
+
+    window.dispatchEvent(new StorageEvent('storage', { key: 'adminProfileAvatar', newValue: '' }));
+    window.dispatchEvent(new CustomEvent('adminUserUpdated', { detail: updated }));
 
     userAPI.updateProfile({ avatarUrl: '' }).catch(err => console.error('Error clearing admin avatar:', err));
     toast.info('Profile photo removed. Restored standard avatar.', 'Photo Removed');
@@ -98,11 +109,15 @@ const AdminProfile = () => {
 
       if (res.success || res.user || res._id) {
         const updated = {
+          ...(adminUser || {}),
           firstName: profileData.firstName,
           lastName: profileData.lastName,
           email: profileData.email,
           avatarUrl: profileData.avatarUrl
         };
+        if (profileData.avatarUrl) {
+          localStorage.setItem('adminProfileAvatar', profileData.avatarUrl);
+        }
         if (updateAdminUser) updateAdminUser(updated);
         toast.success('Admin profile updated successfully.', 'Profile Updated');
         setNotice({ text: 'Profile details updated successfully.', type: 'success' });
@@ -199,18 +214,21 @@ const AdminProfile = () => {
               onClick={() => fileInputRef.current?.click()}
               title="Click to select profile photo from device"
             >
-              {profileData.avatarUrl ? (
-                <img
-                  src={profileData.avatarUrl}
-                  alt="Admin Avatar"
-                  style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--admin-gold)' }}
-                  onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=Avatar'; }}
-                />
-              ) : (
-                <div style={styles.avatarLarge}>
-                  {(profileData.firstName || 'A').charAt(0).toUpperCase()}
-                </div>
-              )}
+              {(() => {
+                const resolvedAvatar = profileData.avatarUrl || resolveProfileImage(adminUser);
+                return resolvedAvatar && !avatarImgError ? (
+                  <img
+                    src={resolvedAvatar}
+                    alt="Admin Avatar"
+                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--admin-gold)', display: 'block' }}
+                    onError={() => setAvatarImgError(true)}
+                  />
+                ) : (
+                  <div style={styles.avatarLarge}>
+                    {(profileData.firstName || 'A').charAt(0).toUpperCase()}
+                  </div>
+                );
+              })()}
               <div style={{
                 position: 'absolute',
                 bottom: '-2px',

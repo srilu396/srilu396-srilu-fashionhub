@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Star, Image as ImageIcon, Video as VideoIcon, X, CheckCircle, Plus, Upload, Loader2 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Star, Image as ImageIcon, Video as VideoIcon, X, CheckCircle, Plus, Upload, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '../common/Toast/useToast';
 import './ProductReviews.css';
 
@@ -9,7 +9,8 @@ const ProductReviews = ({ productId, reviews: initialReviews = [], rating: initi
   const [currentRating, setCurrentRating] = useState(initialRating);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [activeMediaModal, setActiveMediaModal] = useState(null);
-  
+  const carouselRef = useRef(null);
+
   // Review form state
   const [ratingInput, setRatingInput] = useState(5);
   const [commentInput, setCommentInput] = useState('');
@@ -63,9 +64,11 @@ const ProductReviews = ({ productId, reviews: initialReviews = [], rating: initi
     setSubmitting(true);
     const user = JSON.parse(localStorage.getItem('user') || 'null');
     const userName = user ? (user.name || user.firstName || user.username || 'Verified Buyer') : 'Customer Reviewer';
+    const userAvatar = user?.avatarUrl || localStorage.getItem('userProfileAvatar') || '';
 
     const newReviewObj = {
       userName,
+      userAvatar,
       rating: ratingInput,
       comment: commentInput.trim(),
       images: imagePreview ? [imagePreview] : [],
@@ -117,6 +120,45 @@ const ProductReviews = ({ productId, reviews: initialReviews = [], rating: initi
     }
   };
 
+  // Carousel scroll — scrolls by one card width (300px + gap)
+  const CARD_SCROLL = 320;
+  const scrollCarousel = (direction) => {
+    if (!carouselRef.current) return;
+    carouselRef.current.scrollBy({ left: direction * CARD_SCROLL, behavior: 'smooth' });
+  };
+
+  const getReviewerAvatar = (rev) => {
+    if (!rev) return null;
+    if (rev.userAvatar) return rev.userAvatar;
+    if (rev.user?.avatarUrl) return rev.user.avatarUrl;
+    if (rev.avatarUrl) return rev.avatarUrl;
+    if (rev.avatar) return rev.avatar;
+    
+    try {
+      const localUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const localAvatar = localStorage.getItem('userProfileAvatar') || localUser.avatarUrl || localUser.avatar;
+      if (localAvatar) {
+        const revName = (rev.userName || rev.user?.firstName || rev.name || '').toLowerCase().trim();
+        const first = (localUser.firstName || '').toLowerCase().trim();
+        const last = (localUser.lastName || '').toLowerCase().trim();
+        const fullName = `${first} ${last}`.trim();
+        const username = (localUser.username || localUser.name || '').toLowerCase().trim();
+        const email = (localUser.email || '').toLowerCase().trim();
+
+        if (
+          (first && revName.includes(first)) ||
+          (fullName && revName.includes(fullName)) ||
+          (username && revName.includes(username)) ||
+          (email && revName.includes(email)) ||
+          (rev.user && (rev.user === localUser._id || rev.user === localUser.id))
+        ) {
+          return localAvatar;
+        }
+      }
+    } catch (_) {}
+    return null;
+  };
+
   const reviewCount = reviewsList.length;
   const avgRating = currentRating || 4.5;
 
@@ -124,7 +166,7 @@ const ProductReviews = ({ productId, reviews: initialReviews = [], rating: initi
     <section className="product-reviews-section">
       <div className="reviews-container">
         <div className="reviews-header-bar">
-          <h2 className="reviews-section-title">CUSTOMER REVIEWS & RATINGS</h2>
+          <h2 className="reviews-section-title">CUSTOMER REVIEWS &amp; RATINGS</h2>
           <button className="btn-add-review" onClick={() => setShowReviewModal(true)}>
             <Plus size={16} /> Write a Review
           </button>
@@ -154,97 +196,133 @@ const ProductReviews = ({ productId, reviews: initialReviews = [], rating: initi
           </div>
         </div>
 
-        {/* Reviews List */}
+        {/* Reviews — Empty State or Horizontal Carousel */}
         {reviewCount === 0 ? (
           <div className="empty-reviews-box">
-            <p>No reviews yet for this product. Be the first to rate & review!</p>
+            <p>No reviews yet for this product. Be the first to rate &amp; review!</p>
             <button className="btn-secondary-review" onClick={() => setShowReviewModal(true)}>
               Be First to Review
             </button>
           </div>
         ) : (
-          <div className="reviews-list">
-            {reviewsList.map((rev, idx) => {
-              const revRating = rev.rating || 5;
-              const userName = rev.userName || rev.user?.firstName || rev.name || 'Verified Buyer';
-              const dateStr = rev.createdAt ? new Date(rev.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : (rev.date || 'Recently');
-              const commentText = rev.comment || rev.text || rev.review || '';
-              const images = rev.images || (rev.image ? [rev.image] : []);
-              const videos = rev.videos || (rev.video ? [rev.video] : []);
+          <div className="reviews-carousel-wrapper">
+            {/* Left Navigation Arrow */}
+            <button
+              className="carousel-arrow carousel-arrow-left"
+              onClick={() => scrollCarousel(-1)}
+              aria-label="Previous reviews"
+            >
+              <ChevronLeft size={20} />
+            </button>
 
-              return (
-                <div key={rev._id || rev.id || idx} className="review-card">
-                  <div className="review-card-header">
-                    <div className="reviewer-info">
-                      <div className="reviewer-avatar">
-                        {userName.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="reviewer-name-meta">
-                        <h4 className="reviewer-name">{userName}</h4>
-                        <span className="review-date">{dateStr}</span>
-                      </div>
-                    </div>
+            {/* Horizontal Scrollable Track */}
+            <div className="reviews-carousel-track" ref={carouselRef}>
+              {reviewsList.map((rev, idx) => {
+                const revRating = rev.rating || 5;
+                const userName = rev.userName || rev.user?.firstName || rev.name || 'Verified Buyer';
+                const avatarSrc = getReviewerAvatar(rev);
+                const dateStr = rev.createdAt
+                  ? new Date(rev.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                  : (rev.date || 'Recently');
+                const commentText = rev.comment || rev.text || rev.review || '';
+                const images = rev.images || (rev.image ? [rev.image] : []);
+                const videos = rev.videos || (rev.video ? [rev.video] : []);
 
-                    <div className="review-stars-row">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          size={14}
-                          className={i < Math.floor(revRating) ? 'star-gold-fill' : 'star-muted-outline'}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Review Text */}
-                  {commentText && (
-                    <p className="review-comment-body">{commentText}</p>
-                  )}
-
-                  {/* Attached Images */}
-                  {images && images.length > 0 && (
-                    <div className="review-media-group">
-                      <div className="media-group-label">
-                        <ImageIcon size={13} /> Attached Photos:
-                      </div>
-                      <div className="review-thumbs-row">
-                        {images.map((img, imgIdx) => (
-                          <div
-                            key={imgIdx}
-                            className="review-thumb-box"
-                            onClick={() => setActiveMediaModal({ type: 'image', url: img })}
-                          >
-                            <img src={img} alt={`Review photo ${imgIdx + 1}`} />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Attached Videos */}
-                  {videos && videos.length > 0 && (
-                    <div className="review-media-group">
-                      <div className="media-group-label">
-                        <VideoIcon size={13} /> Attached Video:
-                      </div>
-                      <div className="review-videos-row">
-                        {videos.map((vid, vidIdx) => (
-                          <div key={vidIdx} className="review-video-wrapper">
-                            <video
-                              src={vid}
-                              controls
-                              muted
-                              className="review-video-player"
-                              preload="metadata"
+                return (
+                  <div key={rev._id || rev.id || idx} className="review-carousel-card">
+                    {/* Card Header: Avatar + Name + Stars */}
+                    <div className="review-card-header">
+                      <div className="reviewer-info">
+                        <div className="reviewer-avatar">
+                          {avatarSrc ? (
+                            <img
+                              src={avatarSrc}
+                              alt={userName}
+                              className="reviewer-avatar-img"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.parentNode.innerText = userName.charAt(0).toUpperCase();
+                              }}
                             />
-                          </div>
+                          ) : (
+                            userName.charAt(0).toUpperCase()
+                          )}
+                        </div>
+                        <div className="reviewer-name-meta">
+                          <h4 className="reviewer-name">{userName}</h4>
+                          <span className="review-date">{dateStr}</span>
+                        </div>
+                      </div>
+                      <div className="review-stars-row">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            size={13}
+                            className={i < Math.floor(revRating) ? 'star-gold-fill' : 'star-muted-outline'}
+                          />
                         ))}
                       </div>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+
+                    {/* Review Text — clamped to 4 lines for consistent card height */}
+                    {commentText && (
+                      <p className="review-comment-body review-comment-clamped">{commentText}</p>
+                    )}
+
+                    {/* Attached Images */}
+                    {images && images.length > 0 && (
+                      <div className="review-media-group">
+                        <div className="media-group-label">
+                          <ImageIcon size={13} /> Attached Photos:
+                        </div>
+                        <div className="review-thumbs-row">
+                          {images.map((img, imgIdx) => (
+                            <div
+                              key={imgIdx}
+                              className="review-thumb-box"
+                              onClick={() => setActiveMediaModal({ type: 'image', url: img })}
+                            >
+                              <img src={img} alt={`Review photo ${imgIdx + 1}`} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Attached Videos */}
+                    {videos && videos.length > 0 && (
+                      <div className="review-media-group">
+                        <div className="media-group-label">
+                          <VideoIcon size={13} /> Attached Video:
+                        </div>
+                        <div className="review-videos-row">
+                          {videos.map((vid, vidIdx) => (
+                            <div key={vidIdx} className="review-video-wrapper">
+                              <video
+                                src={vid}
+                                controls
+                                muted
+                                className="review-video-player"
+                                preload="metadata"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Right Navigation Arrow */}
+            <button
+              className="carousel-arrow carousel-arrow-right"
+              onClick={() => scrollCarousel(1)}
+              aria-label="Next reviews"
+            >
+              <ChevronRight size={20} />
+            </button>
           </div>
         )}
       </div>

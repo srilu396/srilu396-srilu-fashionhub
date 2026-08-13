@@ -40,15 +40,41 @@ const persistAvatar = (dataUrl) => {
     u.avatarUrl = dataUrl;
     localStorage.setItem('user', JSON.stringify(u));
     window.dispatchEvent(new StorageEvent('storage', { key: 'user', newValue: JSON.stringify(u) }));
+    window.dispatchEvent(new CustomEvent('userAvatarChanged', { detail: dataUrl }));
+    window.dispatchEvent(new CustomEvent('userUpdated', { detail: u }));
+
+    const token = localStorage.getItem('userToken');
+    if (token) {
+      const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+      fetch(`${API_BASE}/api/users/profile`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatarUrl: dataUrl })
+      }).catch(err => console.error('Error syncing user avatar to backend:', err));
+    }
   } catch (_) {}
 };
 
 const clearAvatar = () => {
-  localStorage.removeItem(AVATAR_KEY);
-  const u = JSON.parse(localStorage.getItem('user') || '{}');
-  delete u.avatarUrl;
-  localStorage.setItem('user', JSON.stringify(u));
-  window.dispatchEvent(new StorageEvent('storage', { key: 'user', newValue: JSON.stringify(u) }));
+  try {
+    localStorage.removeItem(AVATAR_KEY);
+    const u = JSON.parse(localStorage.getItem('user') || '{}');
+    delete u.avatarUrl;
+    localStorage.setItem('user', JSON.stringify(u));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'user', newValue: JSON.stringify(u) }));
+    window.dispatchEvent(new CustomEvent('userAvatarChanged', { detail: '' }));
+    window.dispatchEvent(new CustomEvent('userUpdated', { detail: u }));
+
+    const token = localStorage.getItem('userToken');
+    if (token) {
+      const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+      fetch(`${API_BASE}/api/users/profile`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatarUrl: '' })
+      }).catch(err => console.error('Error clearing user avatar on backend:', err));
+    }
+  } catch (_) {}
 };
 
 /* ─── Component ──────────────────────────────────── */

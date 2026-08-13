@@ -34,13 +34,14 @@ const CustomerShoppingHeader = () => {
 
   const userToken = localStorage.getItem('userToken');
 
-  // Sync cart & wishlist from localStorage immediately on mount, and fetch fresh from API
+  // Sync cart & wishlist from localStorage if guest, and fetch fresh from API if logged in
   useEffect(() => {
-    dispatch(syncCart());
-    dispatch(syncWishlist());
     if (userToken) {
       dispatch(fetchCart());
       dispatch(fetchWishlist());
+    } else {
+      dispatch(syncCart());
+      dispatch(syncWishlist());
     }
   }, [dispatch, userToken]);
 
@@ -55,16 +56,27 @@ const CustomerShoppingHeader = () => {
 
   useEffect(() => {
     const handleStorageChange = (e) => {
-      if (e.key === 'user') {
+      if (e.key === 'user' || e.key === 'userProfileAvatar') {
         try {
-          setUser(e.newValue && e.newValue !== 'undefined' ? JSON.parse(e.newValue) : null);
-        } catch (_) {
-          setUser(null);
-        }
+          const u = localStorage.getItem('user');
+          setUser(u && u !== 'undefined' ? JSON.parse(u) : null);
+        } catch (_) {}
       }
     };
+    const handleAvatarEvent = () => {
+      try {
+        const u = localStorage.getItem('user');
+        setUser(u && u !== 'undefined' ? JSON.parse(u) : null);
+      } catch (_) {}
+    };
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener('userUpdated', handleAvatarEvent);
+    window.addEventListener('userAvatarChanged', handleAvatarEvent);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('userUpdated', handleAvatarEvent);
+      window.removeEventListener('userAvatarChanged', handleAvatarEvent);
+    };
   }, []);
 
   const itemCount    = Array.isArray(cartItems)    ? cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0) : 0;
@@ -355,14 +367,28 @@ const CustomerShoppingHeader = () => {
           </button>
 
           {/* Profile */}
-          <button 
-            className="action-btn" 
-            onClick={() => userToken ? navigate('/user/profile') : navigate('/login')}
-            title={user ? `${user.firstName}` : 'Account'}
-            aria-label="Account"
-          >
-            <User size={18} />
-          </button>
+          {(() => {
+            const userAvatar = user?.avatarUrl || user?.profileImage || user?.avatar || user?.image || localStorage.getItem('userProfileAvatar');
+            return (
+              <button 
+                className="action-btn header-profile-btn" 
+                onClick={() => userToken ? navigate('/user/profile') : navigate('/login')}
+                title={user ? `${user.firstName || 'Account'}` : 'Account'}
+                aria-label="Account"
+                style={{ padding: (userToken && userAvatar) ? '3px' : undefined }}
+              >
+                {userToken && userAvatar ? (
+                  <img 
+                    src={userAvatar} 
+                    alt="Profile" 
+                    style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #DE7356', display: 'block' }} 
+                  />
+                ) : (
+                  <User size={18} />
+                )}
+              </button>
+            );
+          })()}
 
           {/* Orders */}
           <button 

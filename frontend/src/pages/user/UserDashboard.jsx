@@ -220,9 +220,22 @@ const UserDashboard = () => {
           </ul>
 
           <div className="nav-actions-right">
-            <button className="nav-icon-btn" title="Account" onClick={() => navigate('/user/profile')}>
-              <User size={19} />
-            </button>
+            {(() => {
+              const userAvatar = user?.avatarUrl || user?.profileImage || user?.avatar || user?.image || localStorage.getItem('userProfileAvatar');
+              return (
+                <button className="nav-icon-btn" title="Account" onClick={() => navigate('/user/profile')} style={{ padding: userAvatar ? '3px' : undefined }}>
+                  {userAvatar ? (
+                    <img 
+                      src={userAvatar} 
+                      alt="Account" 
+                      style={{ width: '25px', height: '25px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #DE7356', display: 'block' }} 
+                    />
+                  ) : (
+                    <User size={19} />
+                  )}
+                </button>
+              );
+            })()}
 
             <button className="nav-icon-btn" title="Wishlist" onClick={() => navigate('/user/wishlist')}>
               <Heart size={19} />

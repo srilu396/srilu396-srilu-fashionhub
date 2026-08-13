@@ -78,7 +78,15 @@ const CustomersManagement = () => {
       });
       const data = await response.json();
       if (data.success) {
-        setActivityData(data.activity);
+        // Guard: only set data if this fetch belongs to the currently selected customer.
+        // Use String() coercion on both sides to handle MongoDB ObjectId vs string mismatch.
+        setSelectedCustomer(prev => {
+          const currentId = String(prev?._id || prev?.id || '');
+          if (currentId === String(customerId)) {
+            setActivityData(data.activity);
+          }
+          return prev;
+        });
       }
     } catch (err) {
       console.error('Error loading customer activity:', err);
@@ -348,7 +356,7 @@ const CustomersManagement = () => {
                 onClick={() => setActiveTab('orders')} 
                 style={{ ...styles.tabBtn, ...(activeTab === 'orders' ? styles.tabBtnActive : {}) }}
               >
-                <ShoppingBag size={14} /> Orders ({activityData?.totalOrders || 0})
+              <ShoppingBag size={14} /> Orders ({activityData?.stats?.totalOrders ?? 0})
               </button>
               <button 
                 onClick={() => setActiveTab('coupons')} 
@@ -403,24 +411,20 @@ const CustomersManagement = () => {
                     <div style={styles.grid2}>
                       <div style={styles.statMini}>
                         <span style={styles.statLabel}>Lifetime Orders</span>
-                        <span style={styles.statVal}>{activityData?.totalOrders || 0}</span>
+                        <span style={styles.statVal}>{activityData?.stats?.totalOrders ?? 0}</span>
                       </div>
                       <div style={styles.statMini}>
                         <span style={styles.statLabel}>Total Expenditure</span>
-                        <span style={styles.statVal}>₹{(activityData?.totalSpent || 0).toLocaleString('en-IN')}</span>
+                        <span style={styles.statVal}>₹{(activityData?.stats?.totalSpent || 0).toLocaleString('en-IN')}</span>
                       </div>
-                      {activityData?.wishlistCount !== undefined && (
-                        <div style={styles.statMini}>
-                          <span style={styles.statLabel}>Wishlist Items</span>
-                          <span style={styles.statVal}><Heart size={13} style={{ display: 'inline', marginRight: '4px' }} />{activityData.wishlistCount}</span>
-                        </div>
-                      )}
-                      {activityData?.cartCount !== undefined && (
-                        <div style={styles.statMini}>
-                          <span style={styles.statLabel}>Active Cart</span>
-                          <span style={styles.statVal}><ShoppingCart size={13} style={{ display: 'inline', marginRight: '4px' }} />{activityData.cartCount}</span>
-                        </div>
-                      )}
+                      <div style={styles.statMini}>
+                        <span style={styles.statLabel}>Wishlist Items</span>
+                        <span style={styles.statVal}><Heart size={13} style={{ display: 'inline', marginRight: '4px' }} />{activityData?.stats?.wishlistCount ?? 0}</span>
+                      </div>
+                      <div style={styles.statMini}>
+                        <span style={styles.statLabel}>Active Cart</span>
+                        <span style={styles.statVal}><ShoppingCart size={13} style={{ display: 'inline', marginRight: '4px' }} />{activityData?.stats?.cartCount ?? 0}</span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -454,24 +458,34 @@ const CustomersManagement = () => {
 
             {/* Tab 3: Coupons */}
             {activeTab === 'coupons' && (
-              <div style={styles.cardBox}>
-                <div style={styles.cardHeaderRow}>
-                  <TicketPercent size={14} color="#D4AF37" />
-                  <span style={styles.cardHeader}>Assigned Discount Coupons</span>
-                </div>
-                <p style={{ color: '#A0A0AB', fontSize: '13px', margin: '0 0 12px 0' }}>Client is eligible for all storewide active promotional codes.</p>
-                <div style={styles.couponBadgeGrid}>
-                  <div style={styles.couponCard}>
-                    <span style={styles.couponCode}>SRILU10</span>
-                    <span style={styles.couponDesc}>10% Off Storewide</span>
-                    <span style={styles.couponStatus}>Active</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {activityLoading ? (
+                  <p style={{ color: '#A0A0AB', fontSize: '13px', padding: '16px' }}>Loading coupon history...</p>
+                ) : activityData?.couponsUsed?.length > 0 ? (
+                  activityData.couponsUsed.map((coupon, i) => (
+                    <div key={i} style={styles.cardBox}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontWeight: '700', color: '#D4AF37', fontSize: '14px', letterSpacing: '1px' }}>
+                          <TicketPercent size={13} style={{ display: 'inline', marginRight: '6px' }} />
+                          {coupon.code}
+                        </span>
+                        <span style={{ fontSize: '11px', backgroundColor: 'rgba(212,175,55,0.12)', color: '#D4AF37', padding: '2px 8px', borderRadius: '10px', fontWeight: '600' }}>
+                          {coupon.discountType === 'percentage' ? `${coupon.discountValue}% Off` : `₹${coupon.discountValue} Off`}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#A0A0AB' }}>
+                        <Clock size={12} style={{ display: 'inline', marginRight: '4px' }} />
+                        Used on {new Date(coupon.usedOn || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {coupon.orderId && <span> · Order #{String(coupon.orderId).substring(0, 8)}</span>}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={styles.emptyState}>
+                    <TicketPercent size={28} color="#D4AF37" style={{ marginBottom: '8px' }} />
+                    <p style={{ margin: 0, color: '#A0A0AB', fontSize: '13px' }}>No coupons used by this client yet.</p>
                   </div>
-                  <div style={styles.couponCard}>
-                    <span style={styles.couponCode}>WELCOMEVIP</span>
-                    <span style={styles.couponDesc}>₹500 Off First Order</span>
-                    <span style={styles.couponStatus}>Eligible</span>
-                  </div>
-                </div>
+                )}
               </div>
             )}
 

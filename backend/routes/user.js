@@ -64,7 +64,8 @@ router.post('/register', async (req, res) => {
       email: savedUser.email,
       firstName: savedUser.firstName,
       lastName: savedUser.lastName,
-      role: savedUser.role
+      role: savedUser.role,
+      avatarUrl: savedUser.avatarUrl || ''
     };
 
     // Generate JWT token
@@ -183,7 +184,8 @@ router.post('/login', async (req, res) => {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      role: user.role
+      role: user.role,
+      avatarUrl: user.avatarUrl || ''
     };
 
     console.log('✅ User logged in successfully:', userResponse.id);
@@ -205,112 +207,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.get('/:id/activity', async (req, res) => {
-  try {
-    const customer = await User.findById(req.params.id)
-      .populate('orders')
-      .populate('wishlist')
-      .populate('cart.product');
-    
-    if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: 'Customer not found'
-      });
-    }
-    
-    // Safely calculate activity statistics
-    const totalOrders = customer.orders?.length || 0;
-    const totalSpent = customer.orders?.reduce((sum, order) => sum + (order.totalAmount || 0), 0) || 0;
-    const wishlistCount = customer.wishlist?.length || 0;
-    const cartCount = customer.cart?.length || 0;
-    
-    // Get last order date
-    let lastOrderDate = null;
-    if (customer.orders && customer.orders.length > 0) {
-      const sortedOrders = [...customer.orders].sort((a, b) => 
-        new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-      );
-      lastOrderDate = sortedOrders[0]?.createdAt || null;
-    }
-    
-    // Extract favorite categories from orders
-    const favoriteCategories = [];
-    if (customer.orders) {
-      customer.orders.forEach(order => {
-        if (order.items) {
-          order.items.forEach(item => {
-            if (item.category && !favoriteCategories.includes(item.category)) {
-              favoriteCategories.push(item.category);
-            }
-          });
-        }
-      });
-    }
-    
-    // Create activity timeline
-    const activityTimeline = [];
-    
-    // Add account creation
-    if (customer.createdAt) {
-      activityTimeline.push({
-        type: 'account_created',
-        date: customer.createdAt,
-        description: 'Account created'
-      });
-    }
-    
-    // Add last login
-    if (customer.lastLogin) {
-      activityTimeline.push({
-        type: 'last_login',
-        date: customer.lastLogin,
-        description: 'Last login'
-      });
-    }
-    
-    // Add orders
-    if (customer.orders) {
-      customer.orders.forEach(order => {
-        if (order.createdAt) {
-          activityTimeline.push({
-            type: 'order_placed',
-            date: order.createdAt,
-            description: `Order #${order.orderNumber || order._id?.slice(-6) || 'N/A'} placed`,
-            amount: order.totalAmount || 0
-          });
-        }
-      });
-    }
-    
-    // Sort timeline by date
-    activityTimeline.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-    
-    res.json({
-      success: true,
-      activity: {
-        totalOrders: totalOrders || 0,
-        totalSpent: totalSpent || 0,
-        wishlistCount: wishlistCount || 0,
-        cartCount: cartCount || 0,
-        averageOrderValue: totalOrders > 0 ? totalSpent / totalOrders : 0,
-        lastOrderDate: lastOrderDate || null,
-        favoriteCategories: favoriteCategories.slice(0, 5), // Top 5 categories
-        activityTimeline: activityTimeline.slice(0, 10) // Last 10 activities
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching customer activity:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching customer activity',
-      error: error.message
-    });
-  }
-});
 
-
-module.exports = router;
 
 
 // ===== CART ROUTES =====
@@ -343,30 +240,37 @@ router.post('/cart/add', async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const { productId, quantity = 1 } = req.body;
     
-    const user = await User.findById(decoded.id);
-    const product = await Product.findById(productId);
-    
-    if (!product) {
-      return res.status(404).json({ success: false, message: 'Product not found' });
+    if (!productId) {
+      return res.status(400).json({ success: false, message: 'Product ID is required' });
     }
 
-    // Check if product already in cart
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (!user.cart) user.cart = [];
+
+    // Check if product already in cart (comparing string IDs)
     const existingItem = user.cart.find(item => 
-      item.product.toString() === productId
+      item.product && item.product.toString() === productId.toString()
     );
 
     if (existingItem) {
-      existingItem.quantity += quantity;
+      existingItem.quantity += Number(quantity);
     } else {
       user.cart.push({
         product: productId,
-        quantity,
+        quantity: Number(quantity),
         addedAt: new Date()
       });
     }
 
     await user.save();
-    await user.populate('cart.product');
+    
+    try {
+      await user.populate('cart.product');
+    } catch (_) {}
 
     res.json({
       success: true,
@@ -374,6 +278,7 @@ router.post('/cart/add', async (req, res) => {
       cart: user.cart
     });
   } catch (error) {
+    console.error('Error adding to cart:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -389,17 +294,20 @@ router.delete('/cart/remove/:productId', async (req, res) => {
     const { productId } = req.params;
     
     const user = await User.findById(decoded.id);
-    user.cart = user.cart.filter(item => 
-      item.product.toString() !== productId
-    );
-
-    await user.save();
-    await user.populate('cart.product');
+    if (user && user.cart) {
+      user.cart = user.cart.filter(item => 
+        item.product && item.product.toString() !== productId.toString()
+      );
+      await user.save();
+      try {
+        await user.populate('cart.product');
+      } catch (_) {}
+    }
 
     res.json({
       success: true,
       message: 'Removed from cart',
-      cart: user.cart
+      cart: user ? user.cart : []
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -417,27 +325,31 @@ router.put('/cart/update', async (req, res) => {
     const { productId, quantity } = req.body;
     
     const user = await User.findById(decoded.id);
-    const item = user.cart.find(item => 
-      item.product.toString() === productId
-    );
+    if (user && user.cart) {
+      const item = user.cart.find(item => 
+        item.product && item.product.toString() === productId.toString()
+      );
 
-    if (item) {
-      if (quantity < 1) {
-        user.cart = user.cart.filter(item => 
-          item.product.toString() !== productId
-        );
-      } else {
-        item.quantity = quantity;
+      if (item) {
+        if (quantity < 1) {
+          user.cart = user.cart.filter(item => 
+            item.product && item.product.toString() !== productId.toString()
+          );
+        } else {
+          item.quantity = Number(quantity);
+        }
       }
-    }
 
-    await user.save();
-    await user.populate('cart.product');
+      await user.save();
+      try {
+        await user.populate('cart.product');
+      } catch (_) {}
+    }
 
     res.json({
       success: true,
       message: 'Cart updated',
-      cart: user.cart
+      cart: user ? user.cart : []
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -453,8 +365,10 @@ router.delete('/cart/clear', async (req, res) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
-    user.cart = [];
-    await user.save();
+    if (user) {
+      user.cart = [];
+      await user.save();
+    }
 
     res.json({
       success: true,
@@ -479,7 +393,7 @@ router.get('/wishlist', async (req, res) => {
     
     res.json({
       success: true,
-      wishlist: user.wishlist || []
+      wishlist: user ? (user.wishlist || []) : []
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -496,20 +410,30 @@ router.post('/wishlist/add', async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const { productId } = req.body;
     
-    const user = await User.findById(decoded.id);
-    const product = await Product.findById(productId);
-    
-    if (!product) {
-      return res.status(404).json({ success: false, message: 'Product not found' });
+    if (!productId) {
+      return res.status(400).json({ success: false, message: 'Product ID is required' });
     }
 
-    // Check if already in wishlist
-    if (!user.wishlist.includes(productId)) {
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (!user.wishlist) user.wishlist = [];
+
+    // Check if already in wishlist using string comparison
+    const alreadyInWishlist = user.wishlist.some(
+      id => id && id.toString() === productId.toString()
+    );
+
+    if (!alreadyInWishlist) {
       user.wishlist.push(productId);
       await user.save();
     }
 
-    await user.populate('wishlist');
+    try {
+      await user.populate('wishlist');
+    } catch (_) {}
 
     res.json({
       success: true,
@@ -517,6 +441,7 @@ router.post('/wishlist/add', async (req, res) => {
       wishlist: user.wishlist
     });
   } catch (error) {
+    console.error('Error adding to wishlist:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -532,17 +457,20 @@ router.delete('/wishlist/remove/:productId', async (req, res) => {
     const { productId } = req.params;
     
     const user = await User.findById(decoded.id);
-    user.wishlist = user.wishlist.filter(id => 
-      id.toString() !== productId
-    );
-
-    await user.save();
-    await user.populate('wishlist');
+    if (user && user.wishlist) {
+      user.wishlist = user.wishlist.filter(id => 
+        id && id.toString() !== productId.toString()
+      );
+      await user.save();
+      try {
+        await user.populate('wishlist');
+      } catch (_) {}
+    }
 
     res.json({
       success: true,
       message: 'Removed from wishlist',
-      wishlist: user.wishlist
+      wishlist: user ? user.wishlist : []
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -906,31 +834,57 @@ router.get('/:id/activity', async (req, res) => {
     const customerId = req.params.id;
     const Order = require('../models/Order');
 
+    // Fetch customer with wishlist and cart counts
     const customer = await User.findById(customerId).select('-password');
     if (!customer) {
       return res.status(404).json({ success: false, message: 'Customer not found' });
     }
 
-    // Fetch real orders belonging strictly to this customer
-    const orders = await Order.find({ user: customerId }).sort({ createdAt: -1 });
+    // Wishlist and cart are embedded in User document
+    const wishlistCount = customer.wishlist ? customer.wishlist.length : 0;
+    const cartCount = customer.cart ? customer.cart.length : 0;
 
+    // Fetch real orders strictly belonging to this customer
+    const orders = await Order.find({ user: customerId }).sort({ createdAt: -1 }).lean();
+
+    // Compute stats
     const validOrders = orders.filter(o => (o.status || '').toLowerCase() !== 'cancelled');
     const totalSpent = validOrders.reduce((sum, o) => sum + (o.totalAmount || o.finalAmount || 0), 0);
     const deliveredOrders = orders.filter(o => (o.status || '').toLowerCase() === 'delivered').length;
     const activeOrders = orders.filter(o => ['processing', 'shipped', 'out_for_delivery'].includes((o.status || '').toLowerCase())).length;
     const cancelledOrders = orders.filter(o => (o.status || '').toLowerCase() === 'cancelled').length;
 
+    // Extract coupons used by this customer from their orders
+    const couponsUsed = [];
+    orders.forEach(order => {
+      if (order.coupon) {
+        const code = typeof order.coupon === 'string' ? order.coupon : (order.coupon.code || order.coupon.coupon_code || '');
+        if (code && !couponsUsed.find(c => c.code === code)) {
+          couponsUsed.push({
+            code,
+            discountType: order.coupon.discount_type || order.coupon.discountType || 'N/A',
+            discountValue: order.coupon.discount_value || order.coupon.discountValue || 0,
+            usedOn: order.createdAt,
+            orderId: order.orderId || order._id
+          });
+        }
+      }
+    });
+
     res.json({
       success: true,
       activity: {
         customer,
         orders,
+        couponsUsed,
         stats: {
           totalOrders: orders.length,
           totalSpent: Math.round(totalSpent),
           deliveredOrders,
           activeOrders,
-          cancelledOrders
+          cancelledOrders,
+          wishlistCount,
+          cartCount
         }
       }
     });
@@ -939,5 +893,6 @@ router.get('/:id/activity', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
 
 module.exports = router;

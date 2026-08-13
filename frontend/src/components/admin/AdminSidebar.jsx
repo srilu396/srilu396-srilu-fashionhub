@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Logo from '../common/Logo';
+import { resolveProfileImage } from '../../utils/api';
 
 const navItems = [
   { label: 'Dashboard', path: '/admin/dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -18,6 +19,7 @@ const navItems = [
 const AdminSidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
   const { adminUser, logoutAdmin } = useAuth();
   const navigate = useNavigate();
+  const [imgError, setImgError] = useState(false);
 
   const handleLogout = () => {
     logoutAdmin();
@@ -27,6 +29,23 @@ const AdminSidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) =>
   const adminName = adminUser?.firstName 
     ? `${adminUser.firstName} ${adminUser.lastName || ''}` 
     : adminUser?.username || 'Executive Admin';
+
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const handleUpdate = () => {
+      setImgError(false);
+      setTick(t => t + 1);
+    };
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('adminUserUpdated', handleUpdate);
+    return () => {
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('adminUserUpdated', handleUpdate);
+    };
+  }, []);
+
+  const adminAvatar = resolveProfileImage(adminUser);
+
 
   return (
     <>
@@ -103,11 +122,12 @@ const AdminSidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) =>
         <div style={styles.userSection}>
           <NavLink to="/admin/profile" style={styles.profileLink} title="View Admin Profile">
             <div style={styles.avatarCircle}>
-              {adminUser?.avatarUrl ? (
+              {adminAvatar && !imgError ? (
                 <img
-                  src={adminUser.avatarUrl}
+                  src={adminAvatar}
                   alt={adminName}
-                  style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                  onError={() => setImgError(true)}
+                  style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }}
                 />
               ) : (
                 adminName.charAt(0).toUpperCase()

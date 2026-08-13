@@ -198,34 +198,37 @@ const AdminManagement = () => {
     {
       header: 'Administrator Name',
       accessor: (row) => `${row.firstName || ''} ${row.lastName || ''}`,
-      render: (row) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={styles.avatarCircle}>
-            {row.avatarUrl ? (
-              <img
-                src={row.avatarUrl}
-                alt={row.firstName || 'Admin'}
-                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
-              />
-            ) : (
-              (row.firstName || row.username || 'A').charAt(0).toUpperCase()
-            )}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontWeight: '600', color: 'var(--admin-text-primary)' }}>
-                {row.firstName} {row.lastName}
-              </span>
-              {row.isMainAdmin ? (
-                <span style={styles.mainBadge}>MAIN ADMIN</span>
+      render: (row) => {
+        const adminAvatar = row.avatarUrl || row.profileImage || row.avatar || row.image || (currentAdmin?.email === row.email ? localStorage.getItem('adminProfileAvatar') : null);
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={styles.avatarCircle}>
+              {adminAvatar ? (
+                <img
+                  src={adminAvatar}
+                  alt={row.firstName || 'Admin'}
+                  style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                />
               ) : (
-                <span style={styles.subBadge}>SUB ADMIN</span>
+                (row.firstName || row.username || 'A').charAt(0).toUpperCase()
               )}
             </div>
-            <span style={{ fontSize: '11px', color: 'var(--admin-text-secondary)' }}>@{row.username}</span>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontWeight: '600', color: 'var(--admin-text-primary)' }}>
+                  {row.firstName} {row.lastName}
+                </span>
+                {row.isMainAdmin ? (
+                  <span style={styles.mainBadge}>MAIN ADMIN</span>
+                ) : (
+                  <span style={styles.subBadge}>SUB ADMIN</span>
+                )}
+              </div>
+              <span style={{ fontSize: '11px', color: 'var(--admin-text-secondary)' }}>@{row.username}</span>
+            </div>
           </div>
-        </div>
-      )
+        );
+      }
     },
     {
       header: 'Email Address',

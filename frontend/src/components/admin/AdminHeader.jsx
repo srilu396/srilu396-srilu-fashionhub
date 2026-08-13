@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import NotificationDrawer from './NotificationDrawer';
-import { notificationAPI } from '../../utils/api';
+import { notificationAPI, resolveProfileImage } from '../../utils/api';
 import { 
   Bell, Sun, Moon 
 } from 'lucide-react';
@@ -13,6 +13,7 @@ const AdminHeader = ({ onMobileToggle, title }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [theme, setTheme] = useState(() => localStorage.getItem('adminTheme') || 'dark');
+  const [imgError, setImgError] = useState(false);
 
   // Theme switch handler
   useEffect(() => {
@@ -89,6 +90,22 @@ const AdminHeader = ({ onMobileToggle, title }) => {
     }
   };
 
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const handleUpdate = () => {
+      setImgError(false);
+      setTick(t => t + 1);
+    };
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('adminUserUpdated', handleUpdate);
+    return () => {
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('adminUserUpdated', handleUpdate);
+    };
+  }, []);
+
+  const adminAvatar = resolveProfileImage(adminUser);
+
   return (
     <header style={styles.header}>
       <div style={styles.leftSection}>
@@ -146,11 +163,12 @@ const AdminHeader = ({ onMobileToggle, title }) => {
         {/* Profile Avatar */}
         <Link to="/admin/profile" style={styles.profileBtn} title="View Admin Profile">
           <div style={styles.headerAvatar}>
-            {adminUser?.avatarUrl ? (
+            {adminAvatar && !imgError ? (
               <img
-                src={adminUser.avatarUrl}
-                alt={adminUser.firstName || 'Admin'}
-                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                src={adminAvatar}
+                alt={adminUser?.firstName || 'Admin'}
+                onError={() => setImgError(true)}
+                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }}
               />
             ) : (
               (adminUser?.firstName || 'A').charAt(0).toUpperCase()

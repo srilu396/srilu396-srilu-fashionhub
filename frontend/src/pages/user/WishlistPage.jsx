@@ -230,7 +230,9 @@ export default function WishlistPage() {
                 const discountPct = item.discount > 0 
                   ? Math.round(item.discount) 
                   : (originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0);
-                const mainImage = item.image || item.imageUrl || (item.images && item.images[0]) || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=500&auto=format&fit=crop&q=80';
+                const mainImage = (item.images && item.images.length > 0 && item.images[0])
+                  ? item.images[0]
+                  : (item.image || item.imageUrl || 'https://via.placeholder.com/400x500?text=Product+Image');
 
                 return (
                   <div 

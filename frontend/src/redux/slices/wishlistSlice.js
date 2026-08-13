@@ -11,7 +11,7 @@ const getUserId = () => {
   }
 };
 
-// Function to get full product data by ID
+// Function to get full product data by ID from the real API only
 const getProductById = async (productId) => {
   try {
     const API_BASE = `${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api`;
@@ -22,56 +22,13 @@ const getProductById = async (productId) => {
       const product = data.product || data;
       console.log('✅ Fetched product from API for wishlist:', product.name);
       return product;
-    } else {
-      // Fallback to mock products
-      const mockProducts = [
-        {
-          _id: '1',
-          name: 'Designer Evening Gown',
-          description: 'Elegant evening gown with intricate embroidery',
-          price: 2999,
-          image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          category: 'Gowns',
-        },
-        {
-          _id: '2',
-          name: 'Casual Summer Dress',
-          description: 'Lightweight and comfortable summer dress',
-          price: 1299,
-          image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          category: 'Casual',
-        },
-        {
-          _id: '3',
-          name: 'Traditional Silk Saree',
-          description: 'Authentic silk saree with golden border',
-          price: 4599,
-          image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          category: 'Traditional',
-        }
-      ];
-      
-      const product = mockProducts.find(p => p._id === productId) || {
-        _id: productId,
-        name: 'Product Name',
-        description: 'Product description',
-        price: 999,
-        image: 'https://via.placeholder.com/300x400?text=Product+Image',
-        category: 'General',
-      };
-      
-      return product;
     }
+    // If the API doesn't return a valid product, return null so it gets filtered out
+    console.warn('⚠️ Product not found in API for wishlist ID:', productId);
+    return null;
   } catch (error) {
-    console.log('⚠️ Error fetching product, using default:', error);
-    return {
-      _id: productId,
-      name: 'Product Name',
-      description: 'Product description',
-      price: 999,
-      image: 'https://via.placeholder.com/300x400?text=Product+Image',
-      category: 'General',
-    };
+    console.warn('⚠️ Error fetching product for wishlist:', productId, error.message);
+    return null;
   }
 };
 
@@ -326,18 +283,11 @@ export const clearWishlist = createAsyncThunk(
   }
 );
 
-const getInitialWishlistItems = () => {
-  try {
-    const userId = getUserId();
-    const wishlistKey = `userWishlist_${userId}`;
-    return JSON.parse(localStorage.getItem(wishlistKey) || '[]') || [];
-  } catch (_) {
-    return [];
-  }
-};
-
 const initialState = {
-  items: getInitialWishlistItems(),
+  // Always start empty — the real wishlist is loaded from the API in fetchWishlist.
+  // Starting from localStorage here causes stale/previous-user items to flash
+  // before the API response arrives, which violates the "no fake data" rule.
+  items: [],
   loading: false,
   error: null,
 };

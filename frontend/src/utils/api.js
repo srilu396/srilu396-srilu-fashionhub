@@ -923,3 +923,29 @@ const getUserId = () => {
     return 'guest';
   }
 };
+
+// Standardized profile image URL resolver across the app
+export const resolveProfileImage = (userObj) => {
+  let target = userObj?.avatarUrl || userObj?.profileImage || userObj?.avatar || userObj?.image;
+
+  if (!target && typeof window !== 'undefined') {
+    if (userObj?.role === 'admin' || !userObj) {
+      target = localStorage.getItem('adminProfileAvatar');
+    }
+    if (!target) {
+      target = localStorage.getItem('userProfileAvatar');
+    }
+  }
+
+  if (!target || typeof target !== 'string') return null;
+
+  const trimmed = target.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith('data:image/')) return trimmed;
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+
+  const serverBase = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+  const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return `${serverBase}${cleanPath}`;
+};
