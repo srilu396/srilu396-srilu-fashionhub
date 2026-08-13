@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -18,55 +18,18 @@ import {
   X,
   Mail,
   Gift,
-  Globe
+  Globe,
+  MessageSquare
 } from 'lucide-react';
 import Logo from '../../components/common/Logo';
 import ProductCard from '../../components/ProductCard';
 import { fetchWishlist } from '../../redux/slices/wishlistSlice';
 import { productsData } from '../../data/products';
+import { categoryAPI } from '../../utils/api';
 import SectionCurveDivider from '../../components/common/SectionCurveDivider';
 import { useToast } from '../../components/common/Toast/useToast';
 import './UserDashboard.css';
 import '../../styles/store.css';
-
-const CATEGORY_CARDS = [
-  {
-    name: 'Women Fashion',
-    categoryKey: "Women's",
-    img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&auto=format&fit=crop&q=80',
-    cta: 'EXPLORE NOW →'
-  },
-  {
-    name: 'Beauty & Care',
-    categoryKey: 'Beauty & Care',
-    img: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=600&auto=format&fit=crop&q=80',
-    cta: 'EXPLORE NOW →'
-  },
-  {
-    name: 'Jewellery',
-    categoryKey: 'Accessories',
-    img: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=600&auto=format&fit=crop&q=80',
-    cta: 'EXPLORE NOW →'
-  },
-  {
-    name: 'Bags & Accessories',
-    categoryKey: 'Accessories',
-    img: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&auto=format&fit=crop&q=80',
-    cta: 'EXPLORE NOW →'
-  },
-  {
-    name: 'Home & Living',
-    categoryKey: 'Home & Living',
-    img: 'https://images.unsplash.com/photo-1616046229478-9901c5536a45?w=600&auto=format&fit=crop&q=80',
-    cta: 'EXPLORE NOW →'
-  },
-  {
-    name: 'Gifts & Hampers',
-    categoryKey: 'Gifts & Hampers',
-    img: 'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?w=600&auto=format&fit=crop&q=80',
-    cta: 'EXPLORE NOW →'
-  }
-];
 
 const UserDashboard = () => {
   const navigate = useNavigate();
@@ -76,11 +39,13 @@ const UserDashboard = () => {
 
   const [user, setUser] = useState(null);
   const [products, setProducts] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   const { items: wishlistItems } = useSelector((state) => state.wishlist || { items: [] });
   const { items: cartItems } = useSelector((state) => state.cart || { items: [] });
@@ -88,9 +53,27 @@ const UserDashboard = () => {
   const cartCount = Array.isArray(cartItems) ? cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0) : 0;
   const wishlistCount = Array.isArray(wishlistItems) ? wishlistItems.length : 0;
 
+  // Fetch unread chat count for the dashboard chat badge
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const u = localStorage.getItem('user');
+      const parsed = u && u !== 'undefined' ? JSON.parse(u) : null;
+      const cId = parsed?._id || parsed?.id;
+      if (!cId) return;
+      const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+      const res = await fetch(`${API_BASE}/api/chat/unread/user/${cId}`);
+      const data = await res.json();
+      if (data.success) setUnreadChatCount(data.unreadCount || 0);
+    } catch (_) {}
+  }, []);
+
   useEffect(() => {
     const userToken = localStorage.getItem('userToken');
-    const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
+    let storedUser = null;
+    try {
+      const u = localStorage.getItem('user');
+      if (u && u !== 'undefined') storedUser = JSON.parse(u);
+    } catch (_) {}
 
     if (!userToken || !storedUser) {
       navigate('/login');
@@ -101,20 +84,54 @@ const UserDashboard = () => {
     fetchData(userToken);
   }, [navigate]);
 
+  // Unread count polling + event listener
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 15000);
+    const handleUpdate = () => fetchUnreadCount();
+    window.addEventListener('updateUserChatUnread', handleUpdate);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('updateUserChatUnread', handleUpdate);
+    };
+  }, [fetchUnreadCount]);
+
+  // Listen for profile updates dispatched from UserProfile page
+  useEffect(() => {
+    const handleUserUpdate = (e) => {
+      if (e.key === 'user' && e.newValue && e.newValue !== 'undefined') {
+        try {
+          setUser(JSON.parse(e.newValue));
+        } catch (_) {}
+      }
+    };
+    window.addEventListener('storage', handleUserUpdate);
+    return () => window.removeEventListener('storage', handleUserUpdate);
+  }, []);
+
+
   const fetchData = async (token) => {
     setLoading(true);
     const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
     try {
-      const pRes = await fetch(`${API_BASE}/api/products`);
-      const pData = await pRes.json();
+      const [pRes, deptRes] = await Promise.all([
+        fetch(`${API_BASE}/api/products`).then(r => r.json()).catch(() => ({})),
+        categoryAPI.getAll(true).catch(() => null)
+      ]);
+
       let prods = [];
-      if (pData.success && Array.isArray(pData.products)) {
-        prods = pData.products;
-      } else if (Array.isArray(pData)) {
-        prods = pData;
+      if (pRes && pRes.success && Array.isArray(pRes.products)) {
+        prods = pRes.products;
+      } else if (Array.isArray(pRes)) {
+        prods = pRes;
       }
       setProducts(prods.length > 0 ? prods : productsData);
+
+      if (deptRes && deptRes.success) {
+        setDepartments(deptRes.departments || deptRes.categories || []);
+      }
+
       dispatch(fetchWishlist());
     } catch (err) {
       console.error('Error fetching storefront data:', err);
@@ -200,9 +217,6 @@ const UserDashboard = () => {
             <li>
               <button className="nav-item-link" onClick={scrollToCategories}>New Arrivals</button>
             </li>
-            <li>
-              <button className="nav-item-link" onClick={() => navigate('/user/coupons')}>Premium Club</button>
-            </li>
           </ul>
 
           <div className="nav-actions-right">
@@ -213,6 +227,20 @@ const UserDashboard = () => {
             <button className="nav-icon-btn" title="Wishlist" onClick={() => navigate('/user/wishlist')}>
               <Heart size={19} />
               {wishlistCount > 0 && <span className="nav-cart-badge">{wishlistCount}</span>}
+            </button>
+
+            <button
+              className="nav-icon-btn nav-icon-btn--chat"
+              title="Chat with Support"
+              onClick={() => window.dispatchEvent(new CustomEvent('openUserChat'))}
+              style={{ position: 'relative' }}
+            >
+              <MessageSquare size={19} />
+              {unreadChatCount > 0 && (
+                <span className="nav-cart-badge">
+                  {unreadChatCount > 9 ? '9+' : unreadChatCount}
+                </span>
+              )}
             </button>
 
             <button className="nav-icon-btn" title="Cart" onClick={() => navigate('/user/cart')}>
@@ -282,10 +310,13 @@ const UserDashboard = () => {
           <SectionCurveDivider nextSectionClass="shop-by-category" />
         </section>
 
-        {/* 3. SHOP BY CATEGORY SECTION (Luxury Fashion Editorial Showcase) */}
+        {/* 3. SHOP BY DEPARTMENT SECTION (Luxury Fashion Editorial Showcase) */}
         <section id="shop-by-category" className="category-section-container">
           <div className="category-title-block">
-            <h2 className="category-editorial-heading">SHOP BY CATEGORY</h2>
+            <h2 className="category-editorial-heading">SHOP BY DEPARTMENT</h2>
+            <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', margin: '-0.5rem 0 1rem', letterSpacing: '0.06em' }}>
+              Discover curated collections by department
+            </p>
             <div className="category-editorial-divider" aria-hidden="true">
               <span className="editorial-divider-line" />
               <div className="four-rhombus-cluster">
@@ -298,63 +329,62 @@ const UserDashboard = () => {
             </div>
           </div>
 
-          <div className="category-carousel-outer-wrapper">
-            {/* Outer Left Side Arrow Button */}
-            <button
-              className="category-side-arrow-btn side-arrow-left"
-              onClick={scrollCategoryLeft}
-              title="Previous categories"
-              aria-label="Previous categories"
-            >
-              <ChevronLeft size={22} />
-            </button>
-
-            <div className="category-scroll-container" ref={categoryScrollRef}>
-              {/* All Category Pill */}
-              <div
-                className={`category-card ${selectedCategory === 'All' ? 'selected-active' : ''}`}
-                onClick={() => handleCategorySelect('All')}
+          {departments.length === 0 && !loading ? (
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              No departments available yet.
+            </div>
+          ) : (
+            <div className="category-carousel-outer-wrapper">
+              {/* Outer Left Side Arrow Button */}
+              <button
+                className="category-side-arrow-btn side-arrow-left"
+                onClick={scrollCategoryLeft}
+                title="Previous departments"
+                aria-label="Previous departments"
               >
-                <div className="category-img-wrap">
-                  <img
-                    src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&auto=format&fit=crop&q=80"
-                    alt="All Categories"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="category-card-body">
-                  <h3 className="category-card-title">All Products</h3>
-                  <span className="category-cta-text">EXPLORE ALL →</span>
-                </div>
+                <ChevronLeft size={22} />
+              </button>
+
+              <div className="category-scroll-container" ref={categoryScrollRef}>
+                {departments.map((dept) => {
+                  const slug = dept.slug || dept.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+                  return (
+                    <div
+                      key={dept._id || dept.name}
+                      className="category-card"
+                      onClick={() => navigate(`/shop/${slug}`)}
+                    >
+                      <div className="category-img-wrap">
+                        <img
+                          src={dept.image || 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&auto=format&fit=crop&q=80'}
+                          alt={dept.name}
+                          loading="lazy"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&auto=format&fit=crop&q=80';
+                          }}
+                        />
+                      </div>
+                      <div className="category-card-body">
+                        <h3 className="category-card-title">{dept.name}</h3>
+                        <span className="category-cta-text">EXPLORE →</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              {CATEGORY_CARDS.map((cat, idx) => (
-                <div
-                  key={idx}
-                  className={`category-card ${selectedCategory === cat.categoryKey ? 'selected-active' : ''}`}
-                  onClick={() => handleCategorySelect(cat.categoryKey)}
-                >
-                  <div className="category-img-wrap">
-                    <img src={cat.img} alt={cat.name} loading="lazy" />
-                  </div>
-                  <div className="category-card-body">
-                    <h3 className="category-card-title">{cat.name}</h3>
-                    <span className="category-cta-text">{cat.cta}</span>
-                  </div>
-                </div>
-              ))}
+              {/* Outer Right Side Arrow Button */}
+              <button
+                className="category-side-arrow-btn side-arrow-right"
+                onClick={scrollCategoryRight}
+                title="Next departments"
+                aria-label="Next departments"
+              >
+                <ChevronRight size={22} />
+              </button>
             </div>
-
-            {/* Outer Right Side Arrow Button */}
-            <button
-              className="category-side-arrow-btn side-arrow-right"
-              onClick={scrollCategoryRight}
-              title="Next categories"
-              aria-label="Next categories"
-            >
-              <ChevronRight size={22} />
-            </button>
-          </div>
+          )}
         </section>
 
         {/* 4. PROMOTIONAL BANNERS SECTION (Exact Replica of Reference Image) */}
@@ -390,36 +420,14 @@ const UserDashboard = () => {
               </div>
             </div>
 
-            {/* Banner 3: Premium VIP Club with Dark Card Graphic */}
+            {/* Banner 3: Exclusive Offers & Coupons */}
             <div className="promo-card promo-card-rose">
               <div className="promo-card-content">
-                <span className="promo-tag">PREMIUM CLUB</span>
-                <h3 className="promo-title">Join & Enjoy <br /> Exclusive Benefits</h3>
+                <span className="promo-tag">SPECIAL SAVINGS</span>
+                <h3 className="promo-title">Claim Exclusive <br /> Discount Coupons</h3>
                 <button className="promo-btn" onClick={() => navigate('/user/coupons')}>
-                  JOIN NOW →
+                  VIEW COUPONS →
                 </button>
-              </div>
-
-              <div className="promo-vip-card-graphic">
-                <div className="vip-card-body">
-                  <svg width="34" height="34" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                      <linearGradient id="unicornGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#F8E5A0" />
-                        <stop offset="50%" stopColor="#D4AF37" />
-                        <stop offset="100%" stopColor="#AA8022" />
-                      </linearGradient>
-                    </defs>
-                    <path d="M28 8 L38 2 L31 13 Z" fill="url(#unicornGoldGrad)" />
-                    <path d="M28 12 C24 15 20 20 18 26 C16 32 19 38 24 42 C21 38 20 34 22 28 C24 22 29 18 34 16 C36 14 34 12 28 12 Z" fill="url(#unicornGoldGrad)" />
-                    <path d="M26 18 C20 20 14 26 14 34 C14 40 18 44 26 46 C22 43 20 39 21 34 C23 28 28 24 35 21 C31 19 28 18 26 18 Z" fill="url(#unicornGoldGrad)" opacity="0.85" />
-                  </svg>
-                  <span className="vip-card-brand">SRILU</span>
-                  <span className="vip-card-sub">FASHION HUB</span>
-                </div>
-                <div className="vip-card-gold-accent">
-                  <div className="gold-gem-cube"></div>
-                </div>
               </div>
             </div>
           </div>

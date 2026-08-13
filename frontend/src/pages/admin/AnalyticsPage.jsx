@@ -3,9 +3,25 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import PageHeader from '../../components/admin/PageHeader';
 import MetricCard from '../../components/admin/MetricCard';
 import DataTable from '../../components/admin/DataTable';
-import { DollarSign, TrendingUp, ShoppingBag, Crown } from 'lucide-react';
+import { DollarSign, TrendingUp, ShoppingBag } from 'lucide-react';
 
 const DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200';
+
+const getProductMainImage = (prod) => {
+  if (!prod) return DEFAULT_PRODUCT_IMAGE;
+  if (Array.isArray(prod.images) && prod.images.length > 0) {
+    const validImg = prod.images.find(img => typeof img === 'string' && img.trim() !== '');
+    if (validImg) return validImg;
+  }
+  if (typeof prod.image === 'string' && prod.image.trim() !== '') {
+    return prod.image;
+  }
+  if (Array.isArray(prod.imagesUrl) && prod.imagesUrl.length > 0) {
+    const validImg = prod.imagesUrl.find(img => typeof img === 'string' && img.trim() !== '');
+    if (validImg) return validImg;
+  }
+  return DEFAULT_PRODUCT_IMAGE;
+};
 
 const AnalyticsPage = () => {
   const [loading, setLoading] = useState(true);
@@ -64,20 +80,28 @@ const AnalyticsPage = () => {
     {
       header: 'Product Name',
       accessor: 'name',
-      render: (row) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <img
-            src={row.image || DEFAULT_PRODUCT_IMAGE}
-            alt={row.name}
-            onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_PRODUCT_IMAGE; }}
-            style={{ width: '40px', height: '48px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--admin-border-subtle)' }}
-          />
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontWeight: '600', color: 'var(--admin-text-primary)' }}>{row.name}</span>
-            <span style={{ fontSize: '11px', color: 'var(--admin-text-secondary)' }}>SKU #{row._id?.slice(-6)?.toUpperCase()}</span>
+      render: (row) => {
+        const mainImg = getProductMainImage(row);
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <img
+              src={mainImg}
+              alt={row.name || 'Product'}
+              onError={(e) => {
+                if (e.target.src !== DEFAULT_PRODUCT_IMAGE) {
+                  e.target.onerror = null;
+                  e.target.src = DEFAULT_PRODUCT_IMAGE;
+                }
+              }}
+              style={{ width: '40px', height: '48px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--admin-border-subtle)' }}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontWeight: '600', color: 'var(--admin-text-primary)' }}>{row.name}</span>
+              <span style={{ fontSize: '11px', color: 'var(--admin-text-secondary)' }}>SKU #{row._id?.slice(-6)?.toUpperCase()}</span>
+            </div>
           </div>
-        </div>
-      )
+        );
+      }
     },
     {
       header: 'Category',
@@ -169,15 +193,6 @@ const AnalyticsPage = () => {
           icon={<ShoppingBag size={18} />}
         />
 
-        <MetricCard
-          title="VIP Members"
-          value={(analytics.totalVipSubscribers || 0).toLocaleString()}
-          change="14.0%"
-          changeType="positive"
-          subtitle="Maison VIP newsletter"
-          tooltipText="Total active clientele enrolled in the Maison VIP program."
-          icon={<Crown size={18} />}
-        />
       </div>
 
       {/* Analytics Visual Breakdown */}
@@ -249,8 +264,8 @@ const AnalyticsPage = () => {
           data={topProducts}
           loading={loading}
           searchPlaceholder="Filter top products..."
-          emptyTitle="No Catalog Data"
-          emptyDescription="Product sales data will populate automatically."
+          emptyTitle="No product performance data available yet."
+          emptyDescription="Product performance data will populate automatically as orders are recorded."
         />
       </div>
     </AdminLayout>

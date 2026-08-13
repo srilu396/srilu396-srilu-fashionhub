@@ -5,7 +5,9 @@ import PageHeader from '../../components/admin/PageHeader';
 import DataTable from '../../components/admin/DataTable';
 import StatusBadge from '../../components/admin/StatusBadge';
 import ActionMenu from '../../components/admin/ActionMenu';
+import MetricCard from '../../components/admin/MetricCard';
 import { fetchAllOrders, updateOrderStatus } from '../../redux/slices/orderSlice';
+import { ShoppingBag, DollarSign, Users, Package, AlertTriangle, Calendar, Layers, Eye, ChevronRight, BarChart2 } from 'lucide-react';
 
 const OrdersManagement = () => {
   const dispatch = useDispatch();
@@ -15,15 +17,51 @@ const OrdersManagement = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
 
+  // Analytics & Insights State
+  const [period, setPeriod] = useState('all'); // 'all' | 'today' | 'month' | 'year'
+  const [selectedYear, setSelectedYear] = useState(2026);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [showProductInsights, setShowProductInsights] = useState(false);
+
+  const [insightsData, setInsightsData] = useState(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+
   useEffect(() => {
     dispatch(fetchAllOrders());
   }, [dispatch]);
+
+  const fetchInsights = async () => {
+    setInsightsLoading(true);
+    try {
+      const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+      const adminToken = localStorage.getItem('adminToken');
+      const res = await fetch(`${API_BASE}/api/analytics/order-insights?period=${period}&year=${selectedYear}&month=${selectedMonth}`, {
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setInsightsData(data);
+      }
+    } catch (err) {
+      console.error('Error fetching order insights:', err);
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInsights();
+  }, [period, selectedYear, selectedMonth]);
 
   const handleStatusChange = async (orderId, newStatus) => {
     setStatusUpdateLoading(true);
     try {
       await dispatch(updateOrderStatus({ orderId, status: newStatus })).unwrap();
       dispatch(fetchAllOrders());
+      fetchInsights();
       if (selectedOrder && (selectedOrder._id === orderId || selectedOrder.id === orderId)) {
         setSelectedOrder(prev => ({ ...prev, orderStatus: newStatus }));
       }
@@ -38,6 +76,9 @@ const OrdersManagement = () => {
     setSelectedOrder(order);
     setDrawerOpen(true);
   };
+
+  // Filter orders for data table based on period
+  const displayOrders = (insightsData && insightsData.orders) ? insightsData.orders : orders;
 
   const columns = [
     {
@@ -96,7 +137,7 @@ const OrdersManagement = () => {
       header: 'Fulfillment',
       accessor: 'orderStatus',
       align: 'center',
-      render: (row) => <StatusBadge status={row.orderStatus || 'pending'} />
+      render: (row) => <StatusBadge status={row.orderStatus || row.status || 'pending'} />
     },
     {
       header: 'Action',
@@ -115,12 +156,35 @@ const OrdersManagement = () => {
     }
   ];
 
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
   return (
     <AdminLayout title="Fulfillment Center">
       <PageHeader
-        title="Orders Management"
-        subtitle="Track, fulfill, and update luxury customer orders across all payment channels"
+        title="Orders Management & Analytics"
+        subtitle="Track, aggregate, and fulfill customer orders with product insights across custom date ranges"
         breadcrumbs={[{ label: 'Orders' }]}
+        actions={
+          <button
+            onClick={() => setShowProductInsights(prev => !prev)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              backgroundColor: showProductInsights ? 'var(--admin-gold)' : 'var(--admin-card-bg)',
+              color: showProductInsights ? '#1A1412' : 'var(--admin-gold)',
+              border: '1px solid var(--admin-border-gold)',
+              fontSize: '12.5px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            <BarChart2 size={16} />
+            {showProductInsights ? 'View All Orders List' : 'Product Order Insights'}
+          </button>
+        }
       />
 
       {error && (
@@ -129,24 +193,171 @@ const OrdersManagement = () => {
         </div>
       )}
 
-      {/* Orders Table */}
-      <DataTable
-        columns={columns}
-        data={orders}
-        loading={loading}
-        searchPlaceholder="Search by order number, customer name, email..."
-        filterKey="orderStatus"
-        filterOptions={[
-          { label: 'All Orders', value: 'ALL' },
-          { label: 'Pending', value: 'pending' },
-          { label: 'Processing', value: 'processing' },
-          { label: 'Shipped', value: 'shipped' },
-          { label: 'Delivered', value: 'delivered' },
-          { label: 'Cancelled', value: 'cancelled' }
-        ]}
-        emptyTitle="No Orders Found"
-        emptyDescription="Orders placed by customers will appear here."
-      />
+      {/* Filter Navigation Bar */}
+      <div style={styles.filterBarCard}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={styles.filterBarLabel}>Period:</span>
+          {[
+            { id: 'all', label: 'All Time' },
+            { id: 'today', label: 'Today' },
+            { id: 'month', label: 'This Month' },
+            { id: 'year', label: 'Year View' }
+          ].map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setPeriod(p.id)}
+              style={styles.filterPill(period === p.id)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {period === 'month' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))}
+              style={styles.selectInput}
+            >
+              {monthNames.map((m, idx) => (
+                <option key={idx} value={idx}>{m} {selectedYear}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {period === 'year' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
+              style={styles.selectInput}
+            >
+              <option value={2026}>2026 Fiscal Cycle</option>
+              <option value={2025}>2025 Fiscal Cycle</option>
+            </select>
+          </div>
+        )}
+      </div>
+
+      {/* VIEW 1: Product Order Insights View */}
+      {showProductInsights ? (
+        <div style={styles.cardSection}>
+          <div style={styles.sectionHeader}>
+            <h3 style={styles.sectionTitle}>Product-Level Order Insights ({period.toUpperCase()})</h3>
+            <p style={styles.sectionSub}>Breakdown of distinct order counts and total units sold per product SKU</p>
+          </div>
+
+          {insightsLoading ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--admin-gold)' }}>Loading product insights...</div>
+          ) : !insightsData?.productInsights || insightsData.productInsights.length === 0 ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--admin-text-secondary)' }}>No product orders recorded for this period.</div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Product Name</th>
+                    <th style={{ ...styles.th, textAlign: 'center' }}>Distinct Orders Count</th>
+                    <th style={{ ...styles.th, textAlign: 'right' }}>Total Units Sold</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {insightsData.productInsights.map((p, idx) => (
+                    <tr key={p.id || idx} style={styles.tr}>
+                      <td style={styles.tdName}>{p.name}</td>
+                      <td style={{ ...styles.td, textAlign: 'center' }}>
+                        <span style={styles.badgeGold}>{p.ordersCount} order(s)</span>
+                      </td>
+                      <td style={{ ...styles.td, textAlign: 'right', fontWeight: '700', color: 'var(--admin-gold)' }}>
+                        {p.unitsSold} unit(s)
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : period === 'year' ? (
+        /* VIEW 2: Year View Monthly Aggregation Table */
+        <div style={styles.cardSection}>
+          <div style={styles.sectionHeader}>
+            <h3 style={styles.sectionTitle}>{selectedYear} Monthly Aggregation Breakdown</h3>
+            <p style={styles.sectionSub}>Monthly performance summary (Jan – Dec). Click any month to drill into order details.</p>
+          </div>
+
+          {insightsLoading ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--admin-gold)' }}>Loading monthly aggregation...</div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Month</th>
+                    <th style={{ ...styles.th, textAlign: 'center' }}>Total Orders</th>
+                    <th style={{ ...styles.th, textAlign: 'right' }}>Revenue (₹)</th>
+                    <th style={{ ...styles.th, textAlign: 'center' }}>Units Sold</th>
+                    <th style={{ ...styles.th, textAlign: 'center' }}>Cancelled</th>
+                    <th style={{ ...styles.th, textAlign: 'right' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(insightsData?.monthlyAggregation || []).map((m) => (
+                    <tr key={m.monthIndex} style={styles.tr}>
+                      <td style={styles.tdName}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Calendar size={15} color="var(--admin-gold)" />
+                          <span>{m.month} {selectedYear}</span>
+                        </div>
+                      </td>
+                      <td style={{ ...styles.td, textAlign: 'center' }}>{m.orders}</td>
+                      <td style={{ ...styles.td, textAlign: 'right', fontWeight: '600', color: 'var(--admin-gold)' }}>
+                        ₹{m.revenue.toLocaleString('en-IN')}
+                      </td>
+                      <td style={{ ...styles.td, textAlign: 'center' }}>{m.unitsSold}</td>
+                      <td style={{ ...styles.td, textAlign: 'center', color: m.cancelled > 0 ? 'var(--admin-danger)' : 'var(--admin-text-secondary)' }}>
+                        {m.cancelled}
+                      </td>
+                      <td style={{ ...styles.td, textAlign: 'right' }}>
+                        <button
+                          onClick={() => {
+                            setSelectedMonth(m.monthIndex);
+                            setPeriod('month');
+                          }}
+                          style={styles.drillBtn}
+                        >
+                          View Month Orders <ChevronRight size={13} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* VIEW 3: Standard Orders Data Table for Filtered Period */
+        <DataTable
+          columns={columns}
+          data={displayOrders}
+          loading={loading || insightsLoading}
+          searchPlaceholder="Search by order reference, customer name, email..."
+          filterKey="orderStatus"
+          filterOptions={[
+            { label: 'All Orders', value: 'ALL' },
+            { label: 'Pending', value: 'pending' },
+            { label: 'Processing', value: 'processing' },
+            { label: 'Shipped', value: 'shipped' },
+            { label: 'Delivered', value: 'delivered' },
+            { label: 'Cancelled', value: 'cancelled' }
+          ]}
+          emptyTitle="No Orders Found"
+          emptyDescription={`No orders found for the selected period (${period.toUpperCase()}).`}
+        />
+      )}
 
       {/* Slide-over Order Details Drawer */}
       {drawerOpen && selectedOrder && (
@@ -159,77 +370,75 @@ const OrdersManagement = () => {
                   #{selectedOrder.orderNumber || (selectedOrder._id || selectedOrder.id || '').slice(-6).toUpperCase()}
                 </h3>
               </div>
-              <button onClick={() => setDrawerOpen(false)} style={styles.drawerClose}>×</button>
+              <button style={styles.drawerClose} onClick={() => setDrawerOpen(false)}>×</button>
             </div>
 
             <div style={styles.drawerBody}>
-              {/* Status Updater */}
-              <div style={styles.sectionCard}>
-                <span style={styles.sectionLabel}>Order Status</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
-                  <StatusBadge status={selectedOrder.orderStatus || 'pending'} />
-                  <select
-                    value={selectedOrder.orderStatus || 'pending'}
-                    onChange={(e) => handleStatusChange(selectedOrder._id || selectedOrder.id, e.target.value)}
-                    disabled={statusUpdateLoading}
-                    style={styles.statusSelect}
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="processing">Processing</option>
-                    <option value="shipped">Shipped</option>
-                    <option value="delivered">Delivered</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
+              {/* Customer info */}
+              <div style={styles.infoSection}>
+                <h4 style={styles.sectionHeading}>Client Information</h4>
+                <div style={styles.infoRow}>
+                  <span>Name:</span>
+                  <strong>{selectedOrder.user?.firstName ? `${selectedOrder.user.firstName} ${selectedOrder.user.lastName || ''}` : selectedOrder.shippingAddress?.fullName || 'Customer'}</strong>
+                </div>
+                <div style={styles.infoRow}>
+                  <span>Email:</span>
+                  <span>{selectedOrder.user?.email || selectedOrder.shippingAddress?.email || 'N/A'}</span>
+                </div>
+                <div style={styles.infoRow}>
+                  <span>Phone:</span>
+                  <span>{selectedOrder.shippingAddress?.phone || 'N/A'}</span>
                 </div>
               </div>
 
-              {/* Customer & Shipping Info */}
-              <div style={styles.sectionCard}>
-                <span style={styles.sectionLabel}>Customer Details</span>
-                <p style={styles.detailText}>
-                  <strong>Name:</strong> {selectedOrder.user?.firstName ? `${selectedOrder.user.firstName} ${selectedOrder.user.lastName || ''}` : selectedOrder.shippingAddress?.fullName || 'N/A'}
-                </p>
-                <p style={styles.detailText}>
-                  <strong>Email:</strong> {selectedOrder.user?.email || selectedOrder.shippingAddress?.email || 'N/A'}
-                </p>
-                <p style={styles.detailText}>
-                  <strong>Shipping Address:</strong> {
-                    typeof selectedOrder.shippingAddress === 'string'
-                      ? selectedOrder.shippingAddress
-                      : `${selectedOrder.shippingAddress?.address || ''}, ${selectedOrder.shippingAddress?.city || ''}, ${selectedOrder.shippingAddress?.country || ''}`
-                  }
+              {/* Shipping address */}
+              <div style={styles.infoSection}>
+                <h4 style={styles.sectionHeading}>Delivery Address (Snapshot)</h4>
+                <p style={styles.addressText}>
+                  {selectedOrder.shippingAddress && (selectedOrder.shippingAddress.address || selectedOrder.shippingAddress.line1) ? (
+                    <>
+                      {selectedOrder.shippingAddress.address || selectedOrder.shippingAddress.line1}<br />
+                      {selectedOrder.shippingAddress.city ? `${selectedOrder.shippingAddress.city}, ` : ''}
+                      {selectedOrder.shippingAddress.state || ''} {selectedOrder.shippingAddress.postalCode ? `- ${selectedOrder.shippingAddress.postalCode}` : ''}
+                    </>
+                  ) : (
+                    <span style={{ color: 'var(--admin-text-secondary)', fontStyle: 'italic' }}>Shipping address unavailable</span>
+                  )}
                 </p>
               </div>
 
-              {/* Purchased Items */}
-              <div style={styles.sectionCard}>
-                <span style={styles.sectionLabel}>Purchased Items ({selectedOrder.items?.length || 0})</span>
-                <div style={styles.itemList}>
+              {/* Financial summary */}
+              <div style={styles.infoSection}>
+                <h4 style={styles.sectionHeading}>Financial Breakdown</h4>
+                <div style={styles.infoRow}><span>Subtotal:</span><span>₹{Math.round(selectedOrder.subtotal || selectedOrder.totalAmount || 0).toLocaleString('en-IN')}</span></div>
+                {selectedOrder.discount > 0 && <div style={styles.infoRow}><span>Discount:</span><span style={{ color: '#4CAF50' }}>-₹{Math.round(selectedOrder.discount).toLocaleString('en-IN')}</span></div>}
+                <div style={styles.infoRow}><span>Tax (10%):</span><span>₹{Math.round(selectedOrder.tax || 0).toLocaleString('en-IN')}</span></div>
+                <div style={styles.infoRowTotal}><span>Final Amount:</span><strong>₹{Math.round(selectedOrder.finalAmount || selectedOrder.totalAmount || 0).toLocaleString('en-IN')}</strong></div>
+                {selectedOrder.paymentMethod && (
+                  <div style={{ ...styles.infoRow, marginTop: '8px' }}>
+                    <span>Payment Method:</span>
+                    <span style={{ textTransform: 'capitalize' }}>{(selectedOrder.paymentMethod || '').replace(/_/g, ' ')}</span>
+                  </div>
+                )}
+                {selectedOrder.transactionId && (
+                  <div style={styles.infoRow}>
+                    <span>Transaction Ref:</span>
+                    <span style={{ fontFamily: 'monospace' }}>{selectedOrder.transactionId}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Order items */}
+              <div style={styles.infoSection}>
+                <h4 style={styles.sectionHeading}>Order Items ({selectedOrder.items?.length || 0})</h4>
+                <div style={styles.itemsList}>
                   {(selectedOrder.items || []).map((item, idx) => (
                     <div key={idx} style={styles.itemRow}>
-                      <img
-                        src={item.product?.image || item.image || 'https://via.placeholder.com/50'}
-                        alt={item.product?.name || item.name}
-                        style={styles.itemThumb}
-                      />
-                      <div style={styles.itemInfo}>
-                        <span style={styles.itemName}>{item.product?.name || item.name || 'Fashion Item'}</span>
-                        <span style={styles.itemQty}>Qty: {item.quantity} × ${item.price}</span>
-                      </div>
-                      <span style={styles.itemSubtotal}>
-                        ${((item.price || 0) * (item.quantity || 1)).toFixed(2)}
-                      </span>
+                      <span style={{ fontWeight: '600' }}>{item.name || 'Luxury Product'} × {item.quantity || 1}</span>
+                      <span style={{ color: 'var(--admin-gold)' }}>₹{Math.round((item.price || 0) * (item.quantity || 1)).toLocaleString('en-IN')}</span>
                     </div>
                   ))}
                 </div>
-              </div>
-
-              {/* Order Total Summary */}
-              <div style={styles.totalRow}>
-                <span>Total Paid:</span>
-                <span style={styles.totalAmount}>
-                  ${(selectedOrder.totalAmount || 0).toFixed(2)}
-                </span>
               </div>
             </div>
           </div>
@@ -241,154 +450,61 @@ const OrdersManagement = () => {
 
 const styles = {
   errorNotice: {
-    padding: '12px 16px',
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    border: '1px solid rgba(239, 68, 68, 0.3)',
-    color: '#EF4444',
-    borderRadius: '6px',
-    fontSize: '13px',
-    marginBottom: '20px'
+    padding: '12px 16px', backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    border: '1px solid #EF4444', borderRadius: '8px', color: '#EF4444',
+    fontSize: '13px', marginBottom: '16px'
   },
-  drawerOverlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    backdropFilter: 'blur(4px)',
-    display: 'flex',
-    justifyContent: 'flex-end',
-    zIndex: 1000
+  filterBarCard: {
+    padding: '14px 20px', backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-border-gold)', borderRadius: '12px',
+    marginBottom: '20px', display: 'flex', alignItems: 'center',
+    justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px'
   },
-  drawerContent: {
-    backgroundColor: 'var(--admin-modal-bg)',
-    borderLeft: '1px solid var(--admin-border-gold)',
-    width: '100%',
-    maxWidth: '460px',
-    height: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    overflowY: 'auto'
+  filterBarLabel: { fontSize: '12px', fontWeight: '700', color: 'var(--admin-gold)', textTransform: 'uppercase' },
+  filterPill: (active) => ({
+    padding: '6px 14px', borderRadius: '20px', fontSize: '11.5px', fontWeight: '600',
+    border: '1px solid var(--admin-border-gold)',
+    backgroundColor: active ? 'var(--admin-gold)' : 'transparent',
+    color: active ? '#1A1412' : 'var(--admin-gold)',
+    cursor: 'pointer', transition: 'all 0.2s ease'
+  }),
+  selectInput: {
+    padding: '6px 12px', borderRadius: '8px', backgroundColor: 'var(--admin-bg-dark)',
+    border: '1px solid var(--admin-border-gold)', color: 'var(--admin-gold)',
+    fontSize: '12px', fontWeight: '600', outline: 'none'
   },
-  drawerHeader: {
-    padding: '20px 24px',
-    borderBottom: '1px solid var(--admin-border-subtle)',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center'
+  metricsGrid: {
+    display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '16px', marginBottom: '24px'
   },
-  drawerMeta: {
-    fontSize: '11px',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-    color: 'var(--admin-text-muted)'
+  cardSection: {
+    backgroundColor: 'var(--admin-card-bg)', border: '1px solid var(--admin-border-gold)',
+    borderRadius: '14px', padding: '24px', marginBottom: '24px'
   },
-  drawerTitle: {
-    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
-    fontSize: '20px',
-    fontWeight: '700',
-    color: 'var(--admin-gold)',
-    margin: 0
-  },
-  drawerClose: {
-    background: 'none',
-    border: 'none',
-    color: 'var(--admin-text-muted)',
-    fontSize: '24px',
-    cursor: 'pointer'
-  },
-  drawerBody: {
-    padding: '24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px'
-  },
-  sectionCard: {
-    backgroundColor: 'var(--admin-card-bg)',
-    border: '1px solid var(--admin-border-subtle)',
-    borderRadius: '8px',
-    padding: '16px'
-  },
-  sectionLabel: {
-    fontSize: '11px',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: '0.8px',
-    color: 'var(--admin-gold)',
-    display: 'block',
-    marginBottom: '8px'
-  },
-  statusSelect: {
-    padding: '6px 12px',
-    backgroundColor: 'var(--admin-input-bg)',
-    border: '1px solid var(--admin-input-border)',
-    borderRadius: '4px',
-    color: 'var(--admin-text-primary)',
-    fontSize: '12px',
-    outline: 'none',
-    cursor: 'pointer'
-  },
-  detailText: {
-    fontSize: '13px',
-    color: 'var(--admin-text-secondary)',
-    margin: '4px 0',
-    lineHeight: '1.4'
-  },
-  itemList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    marginTop: '10px'
-  },
-  itemRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    borderBottom: '1px solid var(--admin-border-subtle)',
-    paddingBottom: '8px'
-  },
-  itemThumb: {
-    width: '40px',
-    height: '48px',
-    objectFit: 'cover',
-    borderRadius: '4px',
-    backgroundColor: 'var(--admin-input-bg)'
-  },
-  itemInfo: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column'
-  },
-  itemName: {
-    fontSize: '13px',
-    fontWeight: '500',
-    color: 'var(--admin-text-primary)'
-  },
-  itemQty: {
-    fontSize: '11px',
-    color: 'var(--admin-text-secondary)'
-  },
-  itemSubtotal: {
-    fontSize: '13px',
-    fontWeight: '600',
-    color: 'var(--admin-gold)'
-  },
-  totalRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '16px 0',
-    borderTop: '1px solid var(--admin-border-subtle)',
-    fontSize: '14px',
-    color: 'var(--admin-text-primary)',
-    fontWeight: '600'
-  },
-  totalAmount: {
-    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
-    fontSize: '22px',
-    color: 'var(--admin-gold)'
-  }
+  sectionHeader: { marginBottom: '18px' },
+  sectionTitle: { fontFamily: "var(--font-serif, 'Playfair Display', serif)", fontSize: '18px', fontWeight: '700', color: 'var(--admin-text-primary)', margin: 0 },
+  sectionSub: { fontSize: '12px', color: 'var(--admin-text-secondary)', margin: '4px 0 0 0' },
+  table: { width: '100%', borderCollapse: 'collapse' },
+  th: { padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: '700', color: 'var(--admin-gold)', textTransform: 'uppercase', borderBottom: '1px solid var(--admin-border-gold)' },
+  tr: { borderBottom: '1px solid var(--admin-border-subtle)' },
+  td: { padding: '12px 16px', fontSize: '13px', color: 'var(--admin-text-primary)' },
+  tdName: { padding: '12px 16px', fontSize: '13.5px', fontWeight: '600', color: 'var(--admin-text-primary)' },
+  badgeGold: { padding: '4px 10px', backgroundColor: 'var(--admin-gold-muted)', border: '1px solid var(--admin-border-gold)', borderRadius: '12px', color: 'var(--admin-gold)', fontSize: '11px', fontWeight: '700' },
+  drillBtn: { display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 12px', backgroundColor: 'transparent', border: '1px solid var(--admin-border-gold)', borderRadius: '6px', color: 'var(--admin-gold)', fontSize: '11.5px', fontWeight: '600', cursor: 'pointer' },
+  drawerOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.75)', zIndex: 9999, display: 'flex', justifyContent: 'flex-end' },
+  drawerContent: { width: '420px', maxWidth: '90vw', height: '100%', backgroundColor: 'var(--admin-card-bg)', borderLeft: '1px solid var(--admin-border-gold)', display: 'flex', flexDirection: 'column' },
+  drawerHeader: { padding: '20px', borderBottom: '1px solid var(--admin-border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  drawerMeta: { fontSize: '10px', fontWeight: '700', color: 'var(--admin-gold)', textTransform: 'uppercase' },
+  drawerTitle: { fontFamily: "var(--font-serif, 'Playfair Display', serif)", fontSize: '20px', fontWeight: '700', color: 'var(--admin-text-primary)', margin: '4px 0 0 0' },
+  drawerClose: { background: 'none', border: 'none', color: 'var(--admin-text-muted)', fontSize: '24px', cursor: 'pointer' },
+  drawerBody: { padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' },
+  infoSection: { backgroundColor: 'var(--admin-bg-dark)', padding: '16px', borderRadius: '10px', border: '1px solid var(--admin-border-subtle)' },
+  sectionHeading: { fontSize: '12px', fontWeight: '700', color: 'var(--admin-gold)', textTransform: 'uppercase', margin: '0 0 10px 0' },
+  infoRow: { display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--admin-text-secondary)', marginBottom: '6px' },
+  infoRowTotal: { display: 'flex', justifyContent: 'space-between', fontSize: '15px', color: 'var(--admin-text-primary)', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--admin-border-subtle)' },
+  addressText: { fontSize: '13px', color: 'var(--admin-text-primary)', margin: 0, lineHeight: '1.5' },
+  itemsList: { display: 'flex', flexDirection: 'column', gap: '8px' },
+  itemRow: { display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0', borderBottom: '1px dashed var(--admin-border-subtle)' }
 };
 
 export default OrdersManagement;

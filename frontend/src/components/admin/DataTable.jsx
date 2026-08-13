@@ -16,13 +16,31 @@ const DataTable = ({
   secondaryFilterOptions = [],
   secondaryFilterKey,
   secondaryFilterLabel = 'Select Roles',
+  customFilters = null,
+  externalSearchQuery = undefined,
+  onSearchChange = undefined,
+  searchWidth = '320px',
   onRowClick,
   emptyTitle = 'No data available',
   emptyDescription = 'There are no items matching your request.',
   onEmptyAction,
-  emptyActionLabel
+  emptyActionLabel,
+  selectable = false,
+  selectedIds = [],
+  onSelectRow,
+  onSelectAll
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [internalSearchQuery, setInternalSearchQuery] = useState('');
+  const searchQuery = externalSearchQuery !== undefined ? externalSearchQuery : internalSearchQuery;
+  const handleSearchChange = (e) => {
+    if (onSearchChange) {
+      onSearchChange(e);
+    } else {
+      setInternalSearchQuery(e.target.value);
+    }
+    setCurrentPage(1);
+  };
+
   const [selectedFilter, setSelectedFilter] = useState('ALL');
   const [selectedSecondaryFilter, setSelectedSecondaryFilter] = useState('ALL');
   const [sortColumn, setSortColumn] = useState(null);
@@ -104,6 +122,14 @@ const DataTable = ({
     return filteredData.slice(startIndex, startIndex + pageSize);
   }, [filteredData, startIndex, pageSize]);
 
+  const currentPageIds = useMemo(() => {
+    return paginatedData.map(row => String(row._id || row.id));
+  }, [paginatedData]);
+
+  const isAllCurrentSelected = useMemo(() => {
+    return currentPageIds.length > 0 && currentPageIds.every(id => selectedIds.includes(id));
+  }, [currentPageIds, selectedIds]);
+
   const handleSort = (col) => {
     if (!col.sortable) return;
     if (sortColumn?.header === col.header) {
@@ -114,44 +140,62 @@ const DataTable = ({
     }
   };
 
-  const pageNumbers = useMemo(() => {
-    const pages = [];
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(i);
+  const paginationItems = useMemo(() => {
+    if (totalPages <= 7) {
+      const pages = [];
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+      return pages;
     }
-    return pages;
-  }, [totalPages]);
+
+    if (currentPage <= 3) {
+      return [1, 2, 3, '...', totalPages];
+    }
+
+    if (currentPage >= totalPages - 2) {
+      return [1, '...', totalPages - 2, totalPages - 1, totalPages];
+    }
+
+    return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+  }, [totalPages, currentPage]);
 
   return (
     <div style={styles.container}>
       {/* Control Bar: Search & Filters */}
       <div style={styles.controlBar}>
-        <SearchBar
-          value={searchQuery}
-          onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-          placeholder={searchPlaceholder}
-          width="480px"
-        />
+        <div style={{ flex: '1 1 360px', minWidth: '260px', maxWidth: '680px' }}>
+          <SearchBar
+            value={searchQuery}
+            onChange={handleSearchChange}
+            placeholder={searchPlaceholder}
+            width="100%"
+          />
+        </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          {secondaryFilterOptions.length > 0 && (
-            <FilterDropdown
-              options={secondaryFilterOptions}
-              value={selectedSecondaryFilter}
-              onChange={(val) => { setSelectedSecondaryFilter(val); setCurrentPage(1); }}
-              placeholder={secondaryFilterLabel}
-              width="180px"
-            />
-          )}
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
+          {customFilters ? (
+            customFilters
+          ) : (
+            <>
+              {secondaryFilterOptions.length > 0 && (
+                <FilterDropdown
+                  options={secondaryFilterOptions}
+                  value={selectedSecondaryFilter}
+                  onChange={(val) => { setSelectedSecondaryFilter(val); setCurrentPage(1); }}
+                  placeholder={secondaryFilterLabel}
+                  width="180px"
+                />
+              )}
 
-          {filterOptions.length > 0 && (
-            <FilterDropdown
-              options={filterOptions}
-              value={selectedFilter}
-              onChange={(val) => { setSelectedFilter(val); setCurrentPage(1); }}
-              placeholder={filterLabel}
-              width="180px"
-            />
+              {filterOptions.length > 0 && (
+                <FilterDropdown
+                  options={filterOptions}
+                  value={selectedFilter}
+                  onChange={(val) => { setSelectedFilter(val); setCurrentPage(1); }}
+                  placeholder={filterLabel}
+                  width="180px"
+                />
+              )}
+            </>
           )}
         </div>
       </div>
@@ -173,6 +217,17 @@ const DataTable = ({
           <table style={styles.table}>
             <thead>
               <tr style={styles.headRow}>
+                {selectable && (
+                  <th style={{ ...styles.th, width: '40px', textAlign: 'center', paddingLeft: '16px', paddingRight: '8px' }}>
+                    <input
+                      type="checkbox"
+                      checked={isAllCurrentSelected}
+                      onChange={(e) => onSelectAll && onSelectAll(e.target.checked, paginatedData)}
+                      title="Select all visible products"
+                      style={{ accentColor: 'var(--admin-gold)', cursor: 'pointer', width: '16px', height: '16px' }}
+                    />
+                  </th>
+                )}
                 {columns.map((col, idx) => (
                   <th
                     key={idx}
@@ -202,30 +257,48 @@ const DataTable = ({
               </tr>
             </thead>
             <tbody>
-              {paginatedData.map((row, rowIdx) => (
-                <tr
-                  key={row.id || row._id || rowIdx}
-                  onClick={() => onRowClick && onRowClick(row)}
-                  style={{
-                    ...styles.bodyRow,
-                    cursor: onRowClick ? 'pointer' : 'default'
-                  }}
-                  className="data-table-row"
-                >
-                  {columns.map((col, colIdx) => (
-                    <td 
-                      key={colIdx} 
-                      style={{ 
-                        ...styles.td, 
-                        textAlign: col.align || 'left',
-                        ...(col.align === 'right' ? { paddingRight: 'var(--spacing-xl, 28px)' } : {})
-                      }}
-                    >
-                      {col.render ? col.render(row) : (typeof col.accessor === 'function' ? col.accessor(row) : row[col.accessor])}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {paginatedData.map((row, rowIdx) => {
+                const rowId = String(row._id || row.id);
+                const isSelected = selectedIds.includes(rowId);
+                return (
+                  <tr
+                    key={rowId || rowIdx}
+                    onClick={() => onRowClick && onRowClick(row)}
+                    style={{
+                      ...styles.bodyRow,
+                      cursor: onRowClick ? 'pointer' : 'default',
+                      backgroundColor: isSelected ? 'rgba(212, 175, 55, 0.08)' : undefined
+                    }}
+                    className="data-table-row"
+                  >
+                    {selectable && (
+                      <td
+                        style={{ ...styles.td, width: '40px', textAlign: 'center', paddingLeft: '16px', paddingRight: '8px' }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => onSelectRow && onSelectRow(rowId, e.target.checked)}
+                          style={{ accentColor: 'var(--admin-gold)', cursor: 'pointer', width: '16px', height: '16px' }}
+                        />
+                      </td>
+                    )}
+                    {columns.map((col, colIdx) => (
+                      <td 
+                        key={colIdx} 
+                        style={{ 
+                          ...styles.td, 
+                          textAlign: col.align || 'left',
+                          ...(col.align === 'right' ? { paddingRight: 'var(--spacing-xl, 28px)' } : {})
+                        }}
+                      >
+                        {col.render ? col.render(row) : (typeof col.accessor === 'function' ? col.accessor(row) : row[col.accessor])}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -274,24 +347,43 @@ const DataTable = ({
 
             {/* Page Number Pills */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              {pageNumbers.map(page => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  style={{
-                    ...styles.pagePill,
-                    backgroundColor: page === currentPage 
-                      ? 'var(--admin-gold)' 
-                      : 'transparent',
-                    color: page === currentPage 
-                      ? 'var(--active-pill-text)' 
-                      : 'var(--admin-text-secondary)',
-                    fontWeight: page === currentPage ? '700' : '500'
-                  }}
-                >
-                  {page}
-                </button>
-              ))}
+              {paginationItems.map((item, idx) => {
+                if (item === '...') {
+                  return (
+                    <span
+                      key={`ellipsis-${idx}`}
+                      style={{
+                        minWidth: '28px',
+                        textAlign: 'center',
+                        color: 'var(--admin-text-muted, #94A3B8)',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        userSelect: 'none'
+                      }}
+                    >
+                      ...
+                    </span>
+                  );
+                }
+                return (
+                  <button
+                    key={item}
+                    onClick={() => setCurrentPage(item)}
+                    style={{
+                      ...styles.pagePill,
+                      backgroundColor: item === currentPage 
+                        ? 'var(--admin-gold)' 
+                        : 'transparent',
+                      color: item === currentPage 
+                        ? 'var(--active-pill-text)' 
+                        : 'var(--admin-text-secondary)',
+                      fontWeight: item === currentPage ? '700' : '500'
+                    }}
+                  >
+                    {item}
+                  </button>
+                );
+              })}
             </div>
 
             <button
@@ -326,7 +418,7 @@ const styles = {
     padding: '16px 20px',
     borderBottom: '1px solid var(--admin-table-divider)',
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
     flexWrap: 'wrap',
     gap: '14px',

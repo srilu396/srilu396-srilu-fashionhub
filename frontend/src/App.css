@@ -7,13 +7,16 @@
 
 body {
   font-family: 'Sora', sans-serif;
-  background: var(--cream, #FEFAF6);
+  background: #FDF9F3;
   color: var(--dark, #2A1F1A);
   line-height: 1.6;
+  margin: 0;
+  padding: 0;
 }
 
 .App {
   min-height: 100vh;
+  background: #FDF9F3;
 }
 
 .loading-container {

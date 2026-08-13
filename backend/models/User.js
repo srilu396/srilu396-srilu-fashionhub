@@ -66,6 +66,18 @@ const userSchema = new mongoose.Schema({
   lastLogin: {
     type: Date
   },
+  avatarUrl: {
+    type: String
+  },
+  dob: {
+    type: String
+  },
+  gender: {
+    type: String
+  },
+  mobile: {
+    type: String
+  },
   // ADD THESE FOR CART/WISHLIST
   cart: [{
     product: {
@@ -87,7 +99,7 @@ const userSchema = new mongoose.Schema({
   wishlist: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product'
-  }],
+  }]
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

@@ -1,0 +1,26 @@
+{
+  "short_name": "SriluFashionHub",
+  "name": "SriluFashionHub - Exclusive Women's Fashion",
+  "icons": [
+    {
+      "src": "favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "logo512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#c9a882",
+  "background_color": "#ffffff"
+}

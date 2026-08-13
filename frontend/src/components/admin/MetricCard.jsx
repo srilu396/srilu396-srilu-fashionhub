@@ -1,11 +1,18 @@
 import React from 'react';
 import Tooltip from './Tooltip';
 
-const MetricCard = ({ title, value, change, changeType = 'positive', icon, subtitle, tooltipText }) => {
+const MetricCard = ({ title, value, change, changeType = 'positive', icon, subtitle, tooltipText, onClick }) => {
   const isPositive = changeType === 'positive';
   
   return (
-    <div style={styles.card} className="admin-card-metric">
+    <div
+      onClick={onClick}
+      style={{
+        ...styles.card,
+        cursor: onClick ? 'pointer' : 'default'
+      }}
+      className="admin-card-metric"
+    >
       <div style={styles.topRow}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={styles.title}>{title}</span>
@@ -46,7 +53,9 @@ const styles = {
     justifyContent: 'space-between',
     transition: 'all 0.2s ease',
     boxShadow: 'var(--admin-shadow-sm)',
-    boxSizing: 'border-box'
+    boxSizing: 'border-box',
+    height: '100%',
+    minHeight: '135px'
   },
   topRow: {
     display: 'flex',

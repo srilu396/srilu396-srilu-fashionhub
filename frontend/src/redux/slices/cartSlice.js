@@ -257,16 +257,28 @@ export const addToCart = createAsyncThunk(
       
       const response = await cartAPI.addToCart(productId, quantity);
       
-      // If backend returns success, fetch updated cart with full product data
-      if (response.success) {
-        const updatedCart = await fetchCart();
-        return updatedCart;
+      if (response.success && Array.isArray(response.cart)) {
+        let cart = response.cart;
+        if (cart.length > 0 && typeof cart[0].product === 'string') {
+          const cartWithFullProducts = await Promise.all(
+            cart.map(async (cartItem) => {
+              const p = (cartItem.product === productId) ? product : await getProductById(cartItem.product);
+              return { ...cartItem, product: p };
+            })
+          );
+          cart = cartWithFullProducts;
+        }
+        const userId = getUserId();
+        if (userId && userId !== 'guest') {
+          localStorage.setItem(`userCart_${userId}`, JSON.stringify(cart));
+        }
+        return { cart };
       }
       
-      return response;
+      const fallback = await mockCartAPI.addToCart(product, quantity);
+      return fallback;
     } catch (error) {
       console.error('Add to cart error, using fallback:', error);
-      // Fallback to localStorage
       try {
         const fallback = await mockCartAPI.addToCart(product, quantity);
         return fallback;
@@ -283,19 +295,31 @@ export const removeFromCart = createAsyncThunk(
     try {
       const response = await cartAPI.removeFromCart(productId);
       
-      // If backend returns success, fetch updated cart
-      if (response.success) {
-        const updatedCart = await fetchCart();
-        return updatedCart;
+      if (response.success && Array.isArray(response.cart)) {
+        let cart = response.cart;
+        if (cart.length > 0 && typeof cart[0].product === 'string') {
+          const cartWithFullProducts = await Promise.all(
+            cart.map(async (cartItem) => {
+              const p = await getProductById(cartItem.product);
+              return { ...cartItem, product: p };
+            })
+          );
+          cart = cartWithFullProducts;
+        }
+        const userId = getUserId();
+        if (userId && userId !== 'guest') {
+          localStorage.setItem(`userCart_${userId}`, JSON.stringify(cart));
+        }
+        return { cart, productId };
       }
       
-      return response;
+      const fallback = await mockCartAPI.removeFromCart(productId);
+      return { ...fallback, productId };
     } catch (error) {
       console.error('Remove from cart error, using fallback:', error);
-      // Fallback to localStorage
       try {
         const fallback = await mockCartAPI.removeFromCart(productId);
-        return fallback;
+        return { ...fallback, productId };
       } catch (fallbackError) {
         return rejectWithValue(fallbackError.message);
       }
@@ -309,16 +333,28 @@ export const updateCartQuantity = createAsyncThunk(
     try {
       const response = await cartAPI.updateCartQuantity(productId, quantity);
       
-      // If backend returns success, fetch updated cart
-      if (response.success) {
-        const updatedCart = await fetchCart();
-        return updatedCart;
+      if (response.success && Array.isArray(response.cart)) {
+        let cart = response.cart;
+        if (cart.length > 0 && typeof cart[0].product === 'string') {
+          const cartWithFullProducts = await Promise.all(
+            cart.map(async (cartItem) => {
+              const p = await getProductById(cartItem.product);
+              return { ...cartItem, product: p };
+            })
+          );
+          cart = cartWithFullProducts;
+        }
+        const userId = getUserId();
+        if (userId && userId !== 'guest') {
+          localStorage.setItem(`userCart_${userId}`, JSON.stringify(cart));
+        }
+        return { cart, productId, quantity };
       }
       
-      return response;
+      const fallback = await mockCartAPI.updateCartQuantity(productId, quantity);
+      return fallback;
     } catch (error) {
       console.error('Update cart quantity error, using fallback:', error);
-      // Fallback to localStorage
       try {
         const fallback = await mockCartAPI.updateCartQuantity(productId, quantity);
         return fallback;
@@ -337,7 +373,6 @@ export const clearCart = createAsyncThunk(
       return response;
     } catch (error) {
       console.error('Clear cart error, using fallback:', error);
-      // Fallback to localStorage
       try {
         const fallback = await mockCartAPI.clearCart();
         return fallback;
@@ -348,15 +383,8 @@ export const clearCart = createAsyncThunk(
   }
 );
 
-const initialState = {
-  items: [],
-  totalItems: 0,
-  totalAmount: 0,
-  loading: false,
-  error: null,
-};
-
-const calculateTotals = (items) => {
+function calculateTotals(items) {
+  if (!Array.isArray(items)) return { totalItems: 0, totalAmount: 0 };
   const validItems = items.filter(item => item && item.product && item.quantity);
   
   const totalItems = validItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
@@ -366,6 +394,27 @@ const calculateTotals = (items) => {
   }, 0);
   
   return { totalItems, totalAmount };
+}
+
+const getInitialCartItems = () => {
+  try {
+    const userId = getUserId();
+    const cartStr = localStorage.getItem(`userCart_${userId}`) || '[]';
+    return JSON.parse(cartStr) || [];
+  } catch (_) {
+    return [];
+  }
+};
+
+const initialCart = getInitialCartItems();
+const initialTotals = calculateTotals(initialCart);
+
+const initialState = {
+  items: initialCart,
+  totalItems: initialTotals.totalItems,
+  totalAmount: initialTotals.totalAmount,
+  loading: false,
+  error: null,
 };
 
 const cartSlice = createSlice({
@@ -373,7 +422,6 @@ const cartSlice = createSlice({
   initialState,
   reducers: {
     setCart: (state, action) => {
-      // Ensure all items have proper images
       const items = Array.isArray(action.payload) ? action.payload : [];
       state.items = items.map(item => ({
         ...item,
@@ -396,7 +444,6 @@ const cartSlice = createSlice({
       const userId = getUserId();
       try {
         const cart = JSON.parse(localStorage.getItem(`userCart_${userId}`) || '[]');
-        // Ensure images are properly formatted
         state.items = cart.map(item => ({
           ...item,
           product: {
@@ -430,7 +477,6 @@ const cartSlice = createSlice({
       })
       .addCase(fetchCart.fulfilled, (state, action) => {
         state.loading = false;
-        // Ensure all items have proper images
         state.items = (action.payload.cart || []).map(item => ({
           ...item,
           product: {
@@ -447,19 +493,19 @@ const cartSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(addToCart.pending, (state) => {
-        state.loading = true;
         state.error = null;
       })
       .addCase(addToCart.fulfilled, (state, action) => {
         state.loading = false;
-        // Ensure all items have proper images
-        state.items = (action.payload.cart || []).map(item => ({
-          ...item,
-          product: {
-            ...item.product,
-            image: item.product?.image || item.product?.imageUrl || item.product?.images?.[0] || 'https://via.placeholder.com/300x400?text=No+Image'
-          }
-        }));
+        if (action.payload && Array.isArray(action.payload.cart)) {
+          state.items = action.payload.cart.map(item => ({
+            ...item,
+            product: {
+              ...item.product,
+              image: item.product?.image || item.product?.imageUrl || item.product?.images?.[0] || 'https://via.placeholder.com/300x400?text=No+Image'
+            }
+          }));
+        }
         const { totalItems, totalAmount } = calculateTotals(state.items);
         state.totalItems = totalItems;
         state.totalAmount = totalAmount;
@@ -468,13 +514,28 @@ const cartSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      .addCase(removeFromCart.pending, (state) => {
-        state.loading = true;
+      .addCase(removeFromCart.pending, (state, action) => {
+        const productId = action.meta.arg;
+        state.items = state.items.filter(item => {
+          const itemProdId = typeof item.product === 'object' ? (item.product?._id || item.product?.id) : item.product;
+          return itemProdId !== productId;
+        });
+        const { totalItems, totalAmount } = calculateTotals(state.items);
+        state.totalItems = totalItems;
+        state.totalAmount = totalAmount;
         state.error = null;
       })
       .addCase(removeFromCart.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload.cart || [];
+        if (action.payload && Array.isArray(action.payload.cart)) {
+          state.items = action.payload.cart.map(item => ({
+            ...item,
+            product: {
+              ...item.product,
+              image: item.product?.image || item.product?.imageUrl || item.product?.images?.[0] || 'https://via.placeholder.com/300x400?text=No+Image'
+            }
+          }));
+        }
         const { totalItems, totalAmount } = calculateTotals(state.items);
         state.totalItems = totalItems;
         state.totalAmount = totalAmount;
@@ -482,14 +543,29 @@ const cartSlice = createSlice({
       .addCase(removeFromCart.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        const userId = getUserId();
+        try {
+          const cart = JSON.parse(localStorage.getItem(`userCart_${userId}`) || '[]');
+          state.items = cart;
+          const { totalItems, totalAmount } = calculateTotals(state.items);
+          state.totalItems = totalItems;
+          state.totalAmount = totalAmount;
+        } catch (_) {}
       })
       .addCase(updateCartQuantity.pending, (state) => {
-        state.loading = true;
         state.error = null;
       })
       .addCase(updateCartQuantity.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload.cart || [];
+        if (action.payload && Array.isArray(action.payload.cart)) {
+          state.items = action.payload.cart.map(item => ({
+            ...item,
+            product: {
+              ...item.product,
+              image: item.product?.image || item.product?.imageUrl || item.product?.images?.[0] || 'https://via.placeholder.com/300x400?text=No+Image'
+            }
+          }));
+        }
         const { totalItems, totalAmount } = calculateTotals(state.items);
         state.totalItems = totalItems;
         state.totalAmount = totalAmount;

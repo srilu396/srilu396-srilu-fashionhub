@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const Product = require('../models/Product');
 const adminAuth = require('../middleware/adminAuth');
 
 // Helper to decode token safely
@@ -86,35 +87,125 @@ router.get('/admin/all', adminAuth, async (req, res) => {
   }
 });
 
-// POST /api/orders or POST /api/orders/create - Create order
-const createOrderHandler = async (req, res) => {
+// GET /api/orders/myorders - Get orders for the logged-in user
+router.get('/myorders', async (req, res) => {
   try {
     const decoded = decodeToken(req);
     if (!decoded) {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
+    const orders = await Order.find({ user: decoded.id })
+      .sort({ createdAt: -1 })
+      .populate('items.product');
+    return res.json(orders);
+  } catch (error) {
+    console.error('Error fetching user orders:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
-    const { items, shippingAddress, totalAmount, paymentMethod } = req.body;
 
-    const orderId = req.body.orderId || `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+// POST /api/orders or POST /api/orders/create - Create order
+const createOrderHandler = async (req, res) => {
+  try {
+    const decoded = decodeToken(req);
+
+    const {
+      items,
+      shippingAddress,
+      totalAmount,
+      finalAmount,
+      subtotal,
+      discount,
+      tax,
+      coupon,
+      paymentMethod,
+      paymentStatus,
+      transactionId
+    } = req.body;
+
+    const orderId = req.body.orderId || `SRL-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+
+    // Authoritative Server-Side Calculation
+    const calcSubtotal = (items || []).reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
+    const calcTax = Math.round(calcSubtotal * 0.1);
+
+    let serverDiscount = Number(discount || 0);
+
+    // Server-side coupon verification
+    if (coupon && coupon.code) {
+      try {
+        const Coupon = require('../models/Coupon');
+        const dbCoupon = await Coupon.findOne({
+          coupon_code: coupon.code.toUpperCase(),
+          active_status: true,
+          valid_from: { $lte: new Date() },
+          valid_until: { $gte: new Date() }
+        });
+
+        if (dbCoupon) {
+          if (!dbCoupon.min_order_value || calcSubtotal >= dbCoupon.min_order_value) {
+            if (dbCoupon.discount_type === 'percentage') {
+              serverDiscount = Math.round((calcSubtotal * dbCoupon.discount_value) / 100);
+            } else {
+              serverDiscount = Math.min(dbCoupon.discount_value, calcSubtotal);
+            }
+            // Increment coupon use count safely
+            dbCoupon.used_count += 1;
+            await dbCoupon.save();
+          }
+        }
+      } catch (cErr) {
+        console.warn('Server coupon verification warning:', cErr.message);
+      }
+    }
+
+    const calcFinalAmount = Math.max(0, Math.round(calcSubtotal + calcTax - serverDiscount));
 
     const order = new Order({
       orderId,
-      user: decoded.id,
+      user: decoded?.id,
       items: items || [],
       shippingAddress: shippingAddress || {},
-      totalAmount: totalAmount || 0,
-      paymentMethod: paymentMethod || 'Credit Card',
-      status: 'processing'
+      totalAmount: calcFinalAmount,
+      finalAmount: calcFinalAmount,
+      subtotal: calcSubtotal,
+      tax: calcTax,
+      discount: serverDiscount,
+      coupon: coupon || null,
+      paymentMethod: paymentMethod || 'cash_on_delivery',
+      paymentStatus: paymentStatus || (paymentMethod === 'cash_on_delivery' ? 'pending' : 'successful'),
+      transactionId: transactionId || null,
+      status: 'processing',
+      estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
     });
 
     await order.save();
 
+    // Automatically decrease product stock on backend database
+    if (items && Array.isArray(items)) {
+      for (const item of items) {
+        const prodId = item.product?._id || item.product || item.id;
+        const qty = Number(item.quantity) || 1;
+        if (prodId) {
+          try {
+            await Product.findByIdAndUpdate(prodId, {
+              $inc: { stock: -qty, inventory: -qty }
+            });
+          } catch (stkErr) {
+            console.error(`Failed to decrement stock for product ${prodId}:`, stkErr.message);
+          }
+        }
+      }
+    }
+
     // Clear user's cart in database
-    const user = await User.findById(decoded.id);
-    if (user) {
-      user.cart = [];
-      await user.save();
+    if (decoded?.id) {
+      const user = await User.findById(decoded.id);
+      if (user) {
+        user.cart = [];
+        await user.save();
+      }
     }
 
     const populatedOrder = await Order.findById(order._id).populate('items.product');

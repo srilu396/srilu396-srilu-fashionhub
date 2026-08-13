@@ -1,129 +1,147 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import Header from '../../components/Header';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import CustomerShoppingHeader from '../../components/CustomerShoppingHeader';
 import {
-  Package,
-  Truck,
-  CheckCircle,
-  Clock,
-  XCircle,
-  Filter,
-  Search,
-  Calendar,
-  DollarSign,
-  ShoppingBag,
-  ChevronRight,
-  Star,
-  Shield,
-  MapPin,
-  Phone,
-  FileText,
-  Download,
-  Eye,
-  CreditCard // Added missing import
+  Package, Truck, CheckCircle, Clock, XCircle, Search,
+  ShoppingBag, ChevronRight, Star, MapPin, Phone,
+  Download, Eye, CreditCard, Home, Sparkles, X, Map
 } from 'lucide-react';
+import { useToast } from '../../components/common/Toast/useToast';
+import { resolveOrderStatus, getSimulatedTimeline } from '../../utils/orderUtils';
+import './OrdersPage.css';
 
-const OrdersPage = () => {
+export default function OrdersPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const toast = useToast();
+
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showSuccess, setShowSuccess] = useState(false);
 
-  useEffect(() => {
-    // Load orders from localStorage - USER SPECIFIC
-    const loadOrders = () => {
-      try {
-        // Get current user
-        const user = JSON.parse(localStorage.getItem('user') || 'null');
-        let savedOrders = [];
-        
-        if (user) {
-          // Get user-specific orders using the same key pattern as orderSlice
-          const userId = user._id || user.id;
-          if (userId) {
-            savedOrders = JSON.parse(localStorage.getItem(`userOrders_${userId}`) || '[]');
-          } else {
-            // Fallback to old key if user doesn't have id
-            savedOrders = JSON.parse(localStorage.getItem('luxuryOrders') || '[]');
-          }
-        } else {
-          // No user logged in
-          savedOrders = [];
-        }
-        
-        setOrders(savedOrders);
-        
-        // Show success message if redirected from checkout
-        if (location.state?.showSuccess) {
-          setShowSuccess(true);
-          setTimeout(() => setShowSuccess(false), 5000);
-        }
-      } catch (error) {
-        console.error('Error loading orders:', error);
-        setOrders([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const loadOrders = async () => {
+    try {
+      setLoading(true);
+      const user = JSON.parse(localStorage.getItem('user') || 'null');
+      let savedOrders = [];
 
+      if (user) {
+        const userId = user._id || user.id;
+        if (userId) {
+          savedOrders = JSON.parse(localStorage.getItem(`userOrders_${userId}`) || '[]');
+        } else {
+          savedOrders = JSON.parse(localStorage.getItem('luxuryOrders') || '[]');
+        }
+      }
+
+      // Fetch orders from backend (merge with localStorage)
+      try {
+        const token = localStorage.getItem('userToken');
+        const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+        if (token) {
+          const res = await fetch(`${API_BASE}/api/orders/myorders`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const backendOrders = Array.isArray(data) ? data : (data.orders || []);
+            const localIds = new Set(savedOrders.map(o => o.orderId || o._id));
+            const newFromBackend = backendOrders.filter(o => !localIds.has(o.orderId || o._id));
+            savedOrders = [...newFromBackend, ...savedOrders];
+          }
+        }
+      } catch (apiErr) {
+        console.warn('Could not fetch orders from API, using localStorage:', apiErr.message);
+      }
+
+      setOrders(savedOrders);
+
+      if (location.state?.showSuccess) {
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 5000);
+      }
+    } catch (error) {
+      console.error('Error loading orders:', error);
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadOrders();
-    
-    // Listen for storage changes (in case orders are updated from other tabs)
+
     const handleStorageChange = (e) => {
       if (e.key?.startsWith('userOrders_')) {
         loadOrders();
       }
     };
-    
+
     window.addEventListener('storage', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, [location.state]);
 
-  // Filter orders based on search and status
+  // Filter orders based on search & status using resolveOrderStatus
   const filteredOrders = orders.filter(order => {
-    // Check if order.items exists and is an array
     const items = order.items || [];
     const orderId = order.orderId || order._id || '';
-    
-    const matchesSearch = 
+
+    const matchesSearch =
       orderId.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
-      items.some(item => 
+      items.some(item =>
         item && item.name && item.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
-    
-    const matchesStatus = 
-      statusFilter === 'all' || 
-      (order.status && order.status === statusFilter);
-    
+
+    const resolvedStatus = resolveOrderStatus(order);
+    const matchesStatus =
+      statusFilter === 'all' ||
+      resolvedStatus === statusFilter.toLowerCase();
+
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'delivered': return <CheckCircle size={20} className="text-green-500" />;
-      case 'processing': return <Clock size={20} className="text-yellow-500" />;
-      case 'shipped': return <Truck size={20} className="text-blue-500" />;
-      case 'cancelled': return <XCircle size={20} className="text-red-500" />;
-      default: return <Package size={20} className="text-gray-500" />;
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'delivered': return 'bg-green-500/20 text-green-500';
-      case 'processing': return 'bg-yellow-500/20 text-yellow-500';
-      case 'shipped': return 'bg-blue-500/20 text-blue-500';
-      case 'cancelled': return 'bg-red-500/20 text-red-500';
-      default: return 'bg-gray-500/20 text-gray-500';
+  const getStatusBadge = (order) => {
+    const resolved = typeof order === 'string' ? order.toLowerCase() : resolveOrderStatus(order);
+    switch (resolved) {
+      case 'delivered':
+        return {
+          label: 'Delivered',
+          icon: <CheckCircle size={12} color="#27AE60" />,
+          className: 'order-status-pill delivered'
+        };
+      case 'out_for_delivery':
+        return {
+          label: 'Out for Delivery',
+          icon: <Truck size={12} color="#E67E22" />,
+          className: 'order-status-pill out-for-delivery'
+        };
+      case 'shipped':
+        return {
+          label: 'Shipped',
+          icon: <Truck size={12} color="#2980B9" />,
+          className: 'order-status-pill shipped'
+        };
+      case 'cancelled':
+        return {
+          label: 'Cancelled',
+          icon: <XCircle size={12} color="#C0392B" />,
+          className: 'order-status-pill cancelled'
+        };
+      case 'processing':
+      default:
+        return {
+          label: 'Processing',
+          icon: <Clock size={12} color="#D4AF37" />,
+          className: 'order-status-pill processing'
+        };
     }
   };
 
@@ -131,13 +149,13 @@ const OrdersPage = () => {
     if (!dateString) return 'N/A';
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
+      return date.toLocaleDateString('en-IN', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
       });
-    } catch (error) {
-      return 'Invalid Date';
+    } catch (_) {
+      return 'N/A';
     }
   };
 
@@ -145,15 +163,15 @@ const OrdersPage = () => {
     if (!dateString) return 'N/A';
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
+      return date.toLocaleDateString('en-IN', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
       });
-    } catch (error) {
-      return 'Invalid Date';
+    } catch (_) {
+      return 'N/A';
     }
   };
 
@@ -163,261 +181,354 @@ const OrdersPage = () => {
   };
 
   const handleDownloadInvoice = (order) => {
-    alert(`Downloading invoice for order ${order.orderId}`);
+    const oId = order.orderId || order._id || 'Order';
+    toast.info(`Invoice for Order #${oId} downloaded`, 'Invoice Downloaded');
   };
 
   const handleTrackOrder = (order) => {
-    alert(`Tracking for order ${order.orderId} would open here`);
+    setSelectedOrder(order);
+    setShowOrderDetails(true);
   };
 
+  const promptCancelOrder = (order) => {
+    setOrderToCancel(order);
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!orderToCancel) return;
+    try {
+      setCancelling(true);
+      const oId = orderToCancel._id || orderToCancel.orderId;
+
+      // Update via backend API
+      try {
+        const token = localStorage.getItem('userToken');
+        const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+        if (token && oId) {
+          await fetch(`${API_BASE}/api/orders/${oId}/cancel`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+        }
+      } catch (apiErr) {
+        console.warn('Backend cancel sync failed (updating locally):', apiErr.message);
+      }
+
+      // Update locally in localStorage
+      const user = JSON.parse(localStorage.getItem('user') || 'null');
+      const userId = user?._id || user?.id;
+
+      const updateOrderList = (list) => {
+        return list.map(o => {
+          if (o._id === oId || o.orderId === orderToCancel.orderId) {
+            return {
+              ...o,
+              status: 'cancelled',
+              cancelledAt: new Date().toISOString()
+            };
+          }
+          return o;
+        });
+      };
+
+      if (userId) {
+        const userOrders = JSON.parse(localStorage.getItem(`userOrders_${userId}`) || '[]');
+        localStorage.setItem(`userOrders_${userId}`, JSON.stringify(updateOrderList(userOrders)));
+      }
+      const sharedOrders = JSON.parse(localStorage.getItem('luxuryOrders') || '[]');
+      localStorage.setItem('luxuryOrders', JSON.stringify(updateOrderList(sharedOrders)));
+
+      // Update state
+      setOrders(prev => updateOrderList(prev));
+
+      if (selectedOrder && (selectedOrder._id === oId || selectedOrder.orderId === orderToCancel.orderId)) {
+        setSelectedOrder(prev => ({ ...prev, status: 'cancelled', cancelledAt: new Date().toISOString() }));
+      }
+
+      toast.info(`Order #${orderToCancel.orderId || oId} has been cancelled`, 'Order Cancelled');
+      setShowCancelModal(false);
+      setOrderToCancel(null);
+    } catch (err) {
+      console.error('Cancellation error:', err);
+      toast.error('Failed to cancel order.');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  // Stats calculation
   const totalSpent = orders.reduce((sum, order) => {
+    const isCancelled = resolveOrderStatus(order) === 'cancelled';
+    if (isCancelled) return sum;
     const amount = order.finalAmount || order.totalAmount || 0;
     return sum + (typeof amount === 'number' ? amount : parseFloat(amount) || 0);
   }, 0);
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
+  const activeOrdersCount = orders.filter(o => {
+    const st = resolveOrderStatus(o);
+    return ['processing', 'shipped', 'out_for_delivery'].includes(st);
+  }).length;
+
+  const deliveredOrdersCount = orders.filter(o => resolveOrderStatus(o) === 'delivered').length;
 
   return (
     <div className="orders-page">
-      <Header />
-      
-      <div className="orders-container">
-        {/* Success Toast */}
+      <CustomerShoppingHeader />
+
+      <div className="orders-content-area">
+        {/* Success Toast for Checkout */}
         {showSuccess && location.state?.newOrder && (
-          <div className="success-toast">
-            <div className="toast-content">
-              <CheckCircle size={24} />
-              <div className="toast-text">
-                <strong>Order Placed Successfully!</strong>
-                <p>Your order #{location.state.newOrder.orderId} has been confirmed</p>
+          <div className="orders-success-toast">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <CheckCircle size={22} color="#27AE60" />
+              <div>
+                <div style={{ fontWeight: 700, color: '#2C221E', fontSize: 14 }}>Order Placed Successfully!</div>
+                <div style={{ fontSize: 13, color: '#7A6F68' }}>
+                  Your order #{location.state.newOrder.orderId} has been confirmed.
+                </div>
               </div>
             </div>
-            <button 
-              className="toast-close"
-              onClick={() => setShowSuccess(false)}
-            >
-              ✕
+            <button className="toast-close-btn" onClick={() => setShowSuccess(false)}>
+              <X size={16} color="#7A6F68" />
             </button>
           </div>
         )}
 
-        {/* Header */}
-        <div className="orders-header">
-          <div className="header-left">
-            <button 
-              className="back-btn"
-              onClick={() => navigate('/user/dashboard')}
-            >
-              ← Back to Dashboard
-            </button>
-            <div className="header-content">
-              <div className="header-icon">
-                <ShoppingBag size={32} />
-              </div>
-              <div className="header-text">
-                <h1 className="page-title">Your Orders</h1>
-                <p className="page-subtitle">
-                  {orders.length} orders • ${totalSpent.toFixed(2)} total spent
-                </p>
-              </div>
+        {/* Breadcrumb */}
+        <nav className="orders-breadcrumb" aria-label="Breadcrumb">
+          <span className="bread-home-link" onClick={() => navigate('/user/dashboard')}>
+            <span className="bread-icon-circle">
+              <Home size={11} color="#FFF" />
+            </span>
+            Home
+          </span>
+          <ChevronRight size={13} color="#B0A8A0" />
+          <span className="bread-active-link">
+            <span className="bread-icon-circle" style={{ background: '#E8967F' }}>
+              <Package size={11} color="#FFF" />
+            </span>
+            My Orders
+          </span>
+        </nav>
+
+        {/* Page Header */}
+        <div className="orders-header-block">
+          <h1 className="orders-page-title">
+            My Orders {orders.length > 0 && <span className="orders-item-count">({orders.length})</span>}
+          </h1>
+          <p className="orders-page-subtitle">Track, manage, and review all your luxury purchases in one place.</p>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="orders-stats-grid">
+          <div className="orders-stat-card">
+            <div className="orders-stat-icon" style={{ background: '#FDEEE9', color: '#DE7356' }}>
+              <ShoppingBag size={20} />
+            </div>
+            <div>
+              <div className="orders-stat-value">{orders.length}</div>
+              <div className="orders-stat-label">Total Orders</div>
+            </div>
+          </div>
+
+          <div className="orders-stat-card">
+            <div className="orders-stat-icon" style={{ background: '#FFF8E7', color: '#D4AF37' }}>
+              <Sparkles size={20} />
+            </div>
+            <div>
+              <div className="orders-stat-value">₹{Math.round(totalSpent).toLocaleString('en-IN')}</div>
+              <div className="orders-stat-label">Total Spent</div>
+            </div>
+          </div>
+
+          <div className="orders-stat-card">
+            <div className="orders-stat-icon" style={{ background: '#E8F8F0', color: '#27AE60' }}>
+              <CheckCircle size={20} />
+            </div>
+            <div>
+              <div className="orders-stat-value">{deliveredOrdersCount}</div>
+              <div className="orders-stat-label">Delivered</div>
+            </div>
+          </div>
+
+          <div className="orders-stat-card">
+            <div className="orders-stat-icon" style={{ background: '#EBF5FF', color: '#2980B9' }}>
+              <Truck size={20} />
+            </div>
+            <div>
+              <div className="orders-stat-value">{activeOrdersCount}</div>
+              <div className="orders-stat-label">Active Orders</div>
             </div>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon">
-              <ShoppingBag size={24} />
-            </div>
-            <div className="stat-content">
-              <div className="stat-value">{orders.length}</div>
-              <div className="stat-label">Total Orders</div>
-            </div>
-          </div>
-          
-          <div className="stat-card">
-            <div className="stat-icon">
-              <DollarSign size={24} />
-            </div>
-            <div className="stat-content">
-              <div className="stat-value">${totalSpent.toFixed(2)}</div>
-              <div className="stat-label">Total Spent</div>
-            </div>
-          </div>
-          
-          <div className="stat-card">
-            <div className="stat-icon">
-              <CheckCircle size={24} />
-            </div>
-            <div className="stat-content">
-              <div className="stat-value">
-                {orders.filter(o => o.status === 'delivered').length}
-              </div>
-              <div className="stat-label">Delivered</div>
-            </div>
-          </div>
-          
-          <div className="stat-card">
-            <div className="stat-icon">
-              <Truck size={24} />
-            </div>
-            <div className="stat-content">
-              <div className="stat-value">
-                {orders.filter(o => o.status === 'processing' || o.status === 'shipped').length}
-              </div>
-              <div className="stat-label">Active</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="filters-section">
-          <div className="search-box">
-            <Search size={20} />
+        {/* Search & Filter Section */}
+        <div className="orders-filter-bar">
+          <div className="orders-search-box">
+            <Search size={16} color="#7A6F68" />
             <input
               type="text"
-              placeholder="Search orders or products..."
+              placeholder="Search orders by ID or product name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
+              className="orders-search-input"
             />
           </div>
-          
-          <div className="filter-buttons">
-            <button 
-              className={`filter-btn ${statusFilter === 'all' ? 'active' : ''}`}
-              onClick={() => setStatusFilter('all')}
-            >
-              All Orders
-            </button>
-            <button 
-              className={`filter-btn ${statusFilter === 'processing' ? 'active' : ''}`}
-              onClick={() => setStatusFilter('processing')}
-            >
-              Processing
-            </button>
-            <button 
-              className={`filter-btn ${statusFilter === 'shipped' ? 'active' : ''}`}
-              onClick={() => setStatusFilter('shipped')}
-            >
-              Shipped
-            </button>
-            <button 
-              className={`filter-btn ${statusFilter === 'delivered' ? 'active' : ''}`}
-              onClick={() => setStatusFilter('delivered')}
-            >
-              Delivered
-            </button>
+
+          <div className="orders-filter-pills">
+            {[
+              { id: 'all', label: 'All Orders' },
+              { id: 'processing', label: 'Processing' },
+              { id: 'shipped', label: 'Shipped' },
+              { id: 'out_for_delivery', label: 'Out for Delivery' },
+              { id: 'delivered', label: 'Delivered' },
+              { id: 'cancelled', label: 'Cancelled' }
+            ].map(({ id, label }) => {
+              const isActive = statusFilter === id;
+              return (
+                <button
+                  key={id}
+                  className={`orders-filter-pill ${isActive ? 'active' : ''}`}
+                  onClick={() => setStatusFilter(id)}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* Orders List */}
-        {filteredOrders.length === 0 ? (
-          <div className="empty-orders">
-            <div className="empty-icon">
-              <Package size={80} />
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '60px 0', color: '#7A6F68' }}>
+            Loading your orders...
+          </div>
+        ) : filteredOrders.length === 0 ? (
+          <div className="orders-empty-card">
+            <div className="orders-empty-icon-circle">
+              <Package size={40} color="#DE7356" />
             </div>
-            <h2>No Orders Found</h2>
-            <p>{searchTerm || statusFilter !== 'all' 
-              ? 'Try changing your search or filter' 
-              : 'Start shopping to see your orders here'}
+            <h2 className="orders-empty-title">No Orders Found</h2>
+            <p className="orders-empty-desc">
+              {searchTerm || statusFilter !== 'all'
+                ? 'No orders matched your search or status filter criteria.'
+                : 'Explore our curated fashion collections and place your first order.'}
             </p>
-            {!searchTerm && statusFilter === 'all' && (
-              <button 
-                className="btn btn-primary"
-                onClick={() => navigate('/user/dashboard')}
-              >
-                Browse Collections
-              </button>
-            )}
+            <button className="orders-explore-btn" onClick={() => navigate('/user/dashboard')}>
+              <Sparkles size={16} style={{ marginRight: 8 }} />
+              Explore Collection
+            </button>
           </div>
         ) : (
-          <div className="orders-grid">
+          <div className="orders-grid-list">
             {filteredOrders.map((order) => {
-              const orderId = order.orderId || order._id || `ORDER-${Math.random().toString(36).substr(2, 9)}`;
-              const orderDate = order.orderDate || order.createdAt || new Date().toISOString();
+              const orderId = order.orderId || order._id || `SRL-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+              const orderDate = order.createdAt || order.orderDate || new Date().toISOString();
               const items = order.items || [];
               const finalAmount = order.finalAmount || order.totalAmount || 0;
-              
+              const resolvedStatus = resolveOrderStatus(order);
+              const badge = getStatusBadge(resolvedStatus);
+
+              const canCancel = ['processing', 'shipped'].includes(resolvedStatus);
+              const isActiveOrder = ['processing', 'shipped', 'out_for_delivery'].includes(resolvedStatus);
+              const isDelivered = resolvedStatus === 'delivered';
+
               return (
-                <div key={orderId} className="order-card">
-                  <div className="order-header">
-                    <div className="order-id">
-                      <span className="order-label">Order ID:</span>
-                      <span className="order-value">{orderId}</span>
+                <div key={orderId} className="order-luxury-card">
+                  {/* Card Top Row */}
+                  <div className="order-card-header">
+                    <div>
+                      <div className="order-card-id">Order #{orderId}</div>
+                      <div className="order-card-date">Placed on {formatDate(orderDate)}</div>
                     </div>
-                    <div className={`status-badge ${getStatusColor(order.status || 'processing')}`}>
-                      {getStatusIcon(order.status || 'processing')}
-                      <span>{(order.status || 'processing').charAt(0).toUpperCase() + (order.status || 'processing').slice(1)}</span>
-                    </div>
+                    <span className={badge.className}>
+                      {badge.icon}
+                      {badge.label}
+                    </span>
                   </div>
-                  
-                  <div className="order-content">
-                    <div className="order-date">
-                      <Calendar size={16} />
-                      <span>Placed on {formatDate(orderDate)}</span>
-                    </div>
-                    
-                    <div className="order-items">
-                      <div className="items-preview">
-                        {items.slice(0, 3).map((item, index) => (
-                          <div key={index} className="item-preview">
-                            {item && item.image ? (
-                              <img src={item.image} alt={item.name || 'Item'} />
-                            ) : (
-                              <div className="placeholder-image">📦</div>
-                            )}
-                            {items.length > 3 && index === 2 && (
-                              <div className="more-items">+{items.length - 3}</div>
-                            )}
+
+                  {/* Items Preview */}
+                  <div className="order-items-preview">
+                    {items.map((item, idx) => {
+                      const itemImage = item?.image || item?.product?.image || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=500&auto=format&fit=crop&q=80';
+                      const itemPrice = Number(item?.price || item?.product?.price || 0);
+
+                      return (
+                        <div key={idx} className="order-item-row">
+                          <img
+                            src={itemImage}
+                            alt={item?.name || 'Product'}
+                            className="order-item-thumb"
+                            onError={(e) => {
+                              e.target.src = 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=500&auto=format&fit=crop&q=80';
+                            }}
+                          />
+                          <div className="order-item-info">
+                            <div className="order-item-name">{item?.name || 'Product'}</div>
+                            <div className="order-item-meta">
+                              Qty: {item?.quantity || 1} • {item?.category || 'Fashion'}
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                      <div className="items-count">
-                        {items.length} item{items.length !== 1 ? 's' : ''}
-                      </div>
-                    </div>
-                    
-                    <div className="order-total">
-                      <div className="total-label">Total Amount</div>
-                      <div className="total-value">
-                        <DollarSign size={16} />
-                        <span>{typeof finalAmount === 'number' ? finalAmount.toFixed(2) : parseFloat(finalAmount || 0).toFixed(2)}</span>
-                      </div>
-                    </div>
+                          <div className="order-item-price">
+                            ₹{(itemPrice * (item?.quantity || 1)).toLocaleString('en-IN')}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  
-                  <div className="order-footer">
-                    <button 
-                      className="btn btn-outline"
-                      onClick={() => handleViewOrderDetails(order)}
-                    >
-                      <Eye size={16} />
-                      View Details
-                    </button>
-                    
-                    {(order.status === 'shipped' || order.status === 'delivered') && (
-                      <button 
-                        className="btn btn-primary"
-                        onClick={() => handleTrackOrder(order)}
+
+                  {/* Card Bottom / Total & Actions */}
+                  <div className="order-card-footer">
+                    <div>
+                      <span className="order-total-label">
+                        {order.paymentMethod === 'cash_on_delivery' ? 'Amount Due (COD)' : 'Total Paid'}
+                      </span>
+                      <div className="order-total-val">₹{Math.round(finalAmount).toLocaleString('en-IN')}</div>
+                    </div>
+
+                    <div className="order-actions-group">
+                      <button
+                        className="order-btn-secondary"
+                        onClick={() => handleViewOrderDetails(order)}
                       >
-                        <Truck size={16} />
-                        Track Order
+                        <Eye size={14} />
+                        View Details
                       </button>
-                    )}
-                    
-                    {order.status === 'delivered' && (
-                      <button 
-                        className="btn btn-outline"
-                        onClick={() => handleDownloadInvoice(order)}
-                      >
-                        <Download size={16} />
-                        Invoice
-                      </button>
-                    )}
+
+                      {isActiveOrder && (
+                        <button
+                          className="order-btn-primary"
+                          onClick={() => handleTrackOrder(order)}
+                        >
+                          <Truck size={14} />
+                          Track Lifecycle
+                        </button>
+                      )}
+
+                      {canCancel && (
+                        <button
+                          className="order-btn-danger"
+                          onClick={() => promptCancelOrder(order)}
+                        >
+                          <XCircle size={14} />
+                          Cancel Order
+                        </button>
+                      )}
+
+                      {isDelivered && (
+                        <button
+                          className="order-btn-outline"
+                          onClick={() => handleDownloadInvoice(order)}
+                        >
+                          <Download size={14} />
+                          Invoice
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -426,1146 +537,316 @@ const OrdersPage = () => {
         )}
       </div>
 
-      {/* Order Details Modal */}
-      {showOrderDetails && selectedOrder && (
-        <div className="modal-overlay">
-          <div className="order-details-modal">
-            <div className="modal-header">
-              <div className="modal-title">
-                <h2>Order Details</h2>
-                <p className="modal-subtitle">Order #{selectedOrder.orderId || selectedOrder._id}</p>
+      {/* CANCEL CONFIRMATION MODAL */}
+      {showCancelModal && orderToCancel && (
+        <div className="order-modal-overlay" onClick={() => setShowCancelModal(false)}>
+          <div className="order-modal-container cancel-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="order-modal-header">
+              <div>
+                <h2 className="order-modal-title" style={{ color: '#C0392B' }}>Cancel Order</h2>
+                <p className="order-modal-subtitle">Order #{orderToCancel.orderId || orderToCancel._id}</p>
               </div>
-              <button 
-                className="close-modal"
-                onClick={() => setShowOrderDetails(false)}
-              >
-                ✕
+              <button className="order-modal-close" onClick={() => setShowCancelModal(false)}>
+                <X size={18} color="#2C221E" />
               </button>
             </div>
-            
-            <div className="modal-body">
-              {/* Order Summary */}
-              <div className="modal-section">
-                <h3 className="section-title">
-                  <ShoppingBag size={20} />
-                  Order Summary
-                </h3>
-                
-                <div className="order-details-grid">
-                  <div className="detail-row">
-                    <span className="detail-label">Order Date</span>
-                    <span className="detail-value">{formatDateTime(selectedOrder.orderDate || selectedOrder.createdAt)}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Order Status</span>
-                    <span className={`detail-value status ${getStatusColor(selectedOrder.status || 'processing')}`}>
-                      {getStatusIcon(selectedOrder.status || 'processing')}
-                      {(selectedOrder.status || 'processing').charAt(0).toUpperCase() + (selectedOrder.status || 'processing').slice(1)}
-                    </span>
-                  </div>
-                  {selectedOrder.estimatedDelivery && (
-                    <div className="detail-row">
-                      <span className="detail-label">Estimated Delivery</span>
-                      <span className="detail-value">{formatDate(selectedOrder.estimatedDelivery)}</span>
-                    </div>
-                  )}
-                  <div className="detail-row">
-                    <span className="detail-label">Payment Method</span>
-                    <span className="detail-value">
-                      <CreditCard size={16} />
-                      {selectedOrder.paymentMethod === 'credit_card' ? 'Credit Card' : 
-                       selectedOrder.paymentMethod === 'cod' ? 'Cash on Delivery' : 
-                       selectedOrder.paymentMethod || 'Not specified'}
-                    </span>
-                  </div>
-                </div>
-              </div>
 
-              {/* Items List */}
-              <div className="modal-section">
-                <h3 className="section-title">
-                  <Package size={20} />
-                  Order Items ({selectedOrder.items?.length || 0})
-                </h3>
-                
-                <div className="items-list">
-                  {(selectedOrder.items || []).map((item, index) => (
-                    <div key={index} className="item-detail">
-                      <div className="item-image">
-                        {item?.image ? (
-                          <img src={item.image} alt={item.name || 'Item'} />
-                        ) : (
-                          <div className="placeholder-image-large">📦</div>
-                        )}
-                      </div>
-                      <div className="item-info">
-                        <h4 className="item-name">{item?.name || 'Unnamed Item'}</h4>
-                        <div className="item-meta">
-                          {item?.category && <span className="item-category">{item.category}</span>}
-                          {item?.brand && <span className="item-brand">{item.brand}</span>}
-                        </div>
-                        <div className="item-quantity">Quantity: {item?.quantity || 1}</div>
-                      </div>
-                      <div className="item-price">
-                        <div className="price-amount">
-                          ${((item?.price || 0) * (item?.quantity || 1)).toFixed(2)}
-                        </div>
-                        {item?.originalPrice && item.originalPrice > (item.price || 0) && (
-                          <div className="original-price">
-                            ${((item.originalPrice || 0) * (item.quantity || 1)).toFixed(2)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Shipping Details */}
-              {selectedOrder.shippingAddress && (
-                <div className="modal-section">
-                  <h3 className="section-title">
-                    <MapPin size={20} />
-                    Shipping Details
-                  </h3>
-                  
-                  <div className="shipping-details">
-                    <div className="detail-row">
-                      <span className="detail-label">Address</span>
-                      <span className="detail-value">{selectedOrder.shippingAddress.address || 'Not specified'}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">City</span>
-                      <span className="detail-value">{selectedOrder.shippingAddress.city || 'Not specified'}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">Postal Code</span>
-                      <span className="detail-value">{selectedOrder.shippingAddress.postalCode || 'Not specified'}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">Phone</span>
-                      <span className="detail-value">
-                        <Phone size={16} />
-                        {selectedOrder.shippingAddress.phone || 'Not specified'}
-                      </span>
-                    </div>
-                    {selectedOrder.shippingAddress.notes && (
-                      <div className="detail-row">
-                        <span className="detail-label">Notes</span>
-                        <span className="detail-value">
-                          <FileText size={16} />
-                          {selectedOrder.shippingAddress.notes}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Payment Summary */}
-              <div className="modal-section">
-                <h3 className="section-title">
-                  <DollarSign size={20} />
-                  Payment Summary
-                </h3>
-                
-                <div className="payment-summary">
-                  <div className="summary-row">
-                    <span>Subtotal</span>
-                    <span>${(selectedOrder.totalAmount || selectedOrder.finalAmount || 0).toFixed(2)}</span>
-                  </div>
-                  
-                  {selectedOrder.discount > 0 && (
-                    <div className="summary-row discount">
-                      <span>Discount</span>
-                      <span>-${(selectedOrder.discount || 0).toFixed(2)}</span>
-                    </div>
-                  )}
-                  
-                  <div className="summary-row">
-                    <span>Shipping</span>
-                    <span className="free">FREE</span>
-                  </div>
-                  
-                  <div className="summary-row">
-                    <span>Tax (10%)</span>
-                    <span>${(selectedOrder.tax || 0).toFixed(2)}</span>
-                  </div>
-                  
-                  <div className="summary-divider"></div>
-                  
-                  <div className="summary-row total">
-                    <span>Total Paid</span>
-                    <span className="total-amount">
-                      ${(selectedOrder.finalAmount || selectedOrder.totalAmount || 0).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              </div>
+            <div className="order-modal-body" style={{ textAlign: 'center', padding: '24px 20px' }}>
+              <XCircle size={44} color="#C0392B" style={{ marginBottom: 12 }} />
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: '#2C221E', margin: '0 0 8px' }}>
+                Are you sure you want to cancel this order?
+              </h3>
+              <p style={{ fontSize: 13, color: '#7A6F68', margin: 0 }}>
+                This action is permanent. Your order will stop delivery progression and move to the Cancelled section.
+              </p>
             </div>
-            
-            <div className="modal-footer">
-              <button 
-                className="btn btn-secondary"
-                onClick={() => setShowOrderDetails(false)}
+
+            <div className="order-modal-footer" style={{ justifyContent: 'center', gap: 12 }}>
+              <button
+                className="order-btn-secondary"
+                onClick={() => setShowCancelModal(false)}
+                disabled={cancelling}
               >
-                Close
+                Keep Order
               </button>
-              <button 
-                className="btn btn-primary"
-                onClick={() => handleDownloadInvoice(selectedOrder)}
+              <button
+                className="order-btn-danger-solid"
+                onClick={handleConfirmCancel}
+                disabled={cancelling}
               >
-                <Download size={16} />
-                Download Invoice
+                {cancelling ? 'Cancelling...' : 'Confirm Cancellation'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <style jsx>{`
-        /* Base Styles */
-        .orders-page {
-          min-height: 100vh;
-          background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-          color: #F5F5F5;
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-
-        .orders-container {
-          max-width: 1400px;
-          margin: 0 auto;
-          padding: 2rem;
-        }
-
-        /* Success Toast */
-        .success-toast {
-          position: fixed;
-          top: 100px;
-          right: 2rem;
-          background: linear-gradient(45deg, #014421, #4CAF50);
-          border: 1px solid rgba(212, 175, 55, 0.3);
-          border-radius: 16px;
-          padding: 1.25rem 1.5rem;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 1rem;
-          z-index: 1000;
-          animation: slideIn 0.3s ease-out;
-          max-width: 400px;
-          box-shadow: 0 10px 30px rgba(1, 68, 33, 0.3);
-        }
-
-        @keyframes slideIn {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-
-        .toast-content {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          flex: 1;
-        }
-
-        .toast-text {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        .toast-text strong {
-          font-size: 1rem;
-          font-weight: 700;
-          color: #F7E7CE;
-        }
-
-        .toast-text p {
-          font-size: 0.9rem;
-          color: rgba(247, 231, 206, 0.8);
-          margin: 0;
-        }
-
-        .toast-close {
-          background: transparent;
-          border: none;
-          color: rgba(247, 231, 206, 0.8);
-          cursor: pointer;
-          font-size: 1.2rem;
-          width: 32px;
-          height: 32px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 8px;
-          transition: all 0.3s ease;
-        }
-
-        .toast-close:hover {
-          background: rgba(247, 231, 206, 0.1);
-          color: #F7E7CE;
-        }
-
-        /* Header */
-        .orders-header {
-          margin-bottom: 2.5rem;
-        }
-
-        .header-left {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .back-btn {
-          align-self: flex-start;
-          background: transparent;
-          border: 1px solid rgba(212, 175, 55, 0.2);
-          color: #D4AF37;
-          padding: 0.75rem 1.5rem;
-          border-radius: 12px;
-          cursor: pointer;
-          font-size: 0.95rem;
-          font-weight: 500;
-          transition: all 0.3s ease;
-        }
-
-        .back-btn:hover {
-          background: rgba(212, 175, 55, 0.1);
-          transform: translateX(-5px);
-        }
-
-        .header-content {
-          display: flex;
-          align-items: center;
-          gap: 1.5rem;
-        }
-
-        .header-icon {
-          width: 64px;
-          height: 64px;
-          background: linear-gradient(135deg, #D4AF37 0%, #F7E7CE 100%);
-          border-radius: 16px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #1C1C1C;
-        }
-
-        .header-text {
-          flex: 1;
-        }
-
-        .page-title {
-          font-family: 'Playfair Display', serif;
-          font-size: 2.5rem;
-          font-weight: 700;
-          background: linear-gradient(45deg, #F5F5F5, #D4AF37);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          margin: 0 0 0.5rem 0;
-        }
-
-        .page-subtitle {
-          color: rgba(245, 245, 245, 0.7);
-          font-size: 1rem;
-          font-weight: 400;
-          margin: 0;
-        }
-
-        /* Stats Grid */
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-          gap: 1.5rem;
-          margin-bottom: 2.5rem;
-        }
-
-        .stat-card {
-          background: rgba(28, 28, 28, 0.7);
-          border: 1px solid rgba(212, 175, 55, 0.1);
-          border-radius: 20px;
-          padding: 1.5rem;
-          display: flex;
-          align-items: center;
-          gap: 1.25rem;
-          transition: all 0.3s ease;
-          backdrop-filter: blur(10px);
-        }
-
-        .stat-card:hover {
-          border-color: rgba(212, 175, 55, 0.3);
-          transform: translateY(-3px);
-          box-shadow: 0 10px 30px rgba(212, 175, 55, 0.1);
-        }
-
-        .stat-icon {
-          width: 56px;
-          height: 56px;
-          border-radius: 14px;
-          background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(75, 28, 47, 0.1));
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #D4AF37;
-        }
-
-        .stat-content {
-          flex: 1;
-        }
-
-        .stat-value {
-          font-family: 'Playfair Display', serif;
-          font-size: 2rem;
-          font-weight: 700;
-          color: #F5F5F5;
-          line-height: 1;
-          margin-bottom: 0.25rem;
-        }
-
-        .stat-label {
-          color: rgba(245, 245, 245, 0.7);
-          font-size: 0.9rem;
-          font-weight: 500;
-        }
-
-        /* Filters */
-        .filters-section {
-          background: rgba(28, 28, 28, 0.7);
-          border: 1px solid rgba(212, 175, 55, 0.1);
-          border-radius: 20px;
-          padding: 1.5rem;
-          margin-bottom: 2rem;
-          backdrop-filter: blur(10px);
-        }
-
-        .search-box {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(212, 175, 55, 0.2);
-          border-radius: 12px;
-          padding: 0.75rem 1.25rem;
-          margin-bottom: 1.5rem;
-        }
-
-        .search-box svg {
-          color: rgba(245, 245, 245, 0.5);
-          flex-shrink: 0;
-        }
-
-        .search-input {
-          flex: 1;
-          background: transparent;
-          border: none;
-          color: #F5F5F5;
-          font-size: 0.95rem;
-          outline: none;
-          font-family: inherit;
-        }
-
-        .search-input::placeholder {
-          color: rgba(245, 245, 245, 0.4);
-        }
-
-        .filter-buttons {
-          display: flex;
-          gap: 0.75rem;
-          flex-wrap: wrap;
-        }
-
-        .filter-btn {
-          padding: 0.75rem 1.5rem;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(212, 175, 55, 0.2);
-          border-radius: 12px;
-          color: rgba(245, 245, 245, 0.8);
-          font-size: 0.9rem;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-
-        .filter-btn:hover {
-          background: rgba(212, 175, 55, 0.1);
-          border-color: rgba(212, 175, 55, 0.3);
-        }
-
-        .filter-btn.active {
-          background: linear-gradient(45deg, #4B1C2F, #014421);
-          border-color: rgba(212, 175, 55, 0.4);
-          color: #F7E7CE;
-          font-weight: 600;
-        }
-
-        /* Placeholder images */
-        .placeholder-image {
-          width: 100%;
-          height: 100%;
-          background: rgba(212, 175, 55, 0.1);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 1.2rem;
-          color: #D4AF37;
-        }
-
-        .placeholder-image-large {
-          width: 100%;
-          height: 100%;
-          background: rgba(212, 175, 55, 0.1);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 2rem;
-          color: #D4AF37;
-          border-radius: 12px;
-        }
-
-        /* Empty State */
-        .empty-orders {
-          text-align: center;
-          padding: 4rem 2rem;
-          background: rgba(28, 28, 28, 0.6);
-          border-radius: 24px;
-          border: 1px solid rgba(212, 175, 55, 0.15);
-          backdrop-filter: blur(10px);
-        }
-
-        .empty-icon {
-          width: 120px;
-          height: 120px;
-          margin: 0 auto 2rem;
-          background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(75, 28, 47, 0.1));
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #D4AF37;
-        }
-
-        .empty-orders h2 {
-          font-family: 'Playfair Display', serif;
-          font-size: 2rem;
-          color: #F5F5F5;
-          margin-bottom: 0.5rem;
-        }
-
-        .empty-orders p {
-          color: rgba(245, 245, 245, 0.7);
-          margin-bottom: 2.5rem;
-          font-size: 1.1rem;
-        }
-
-        /* Orders Grid */
-        .orders-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-          gap: 1.5rem;
-        }
-
-        .order-card {
-          background: rgba(28, 28, 28, 0.7);
-          border: 1px solid rgba(212, 175, 55, 0.1);
-          border-radius: 20px;
-          padding: 1.5rem;
-          display: flex;
-          flex-direction: column;
-          gap: 1.25rem;
-          transition: all 0.3s ease;
-          backdrop-filter: blur(10px);
-        }
-
-        .order-card:hover {
-          border-color: rgba(212, 175, 55, 0.3);
-          transform: translateY(-3px);
-          box-shadow: 0 10px 30px rgba(212, 175, 55, 0.1);
-        }
-
-        .order-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          gap: 1rem;
-        }
-
-        .order-id {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        .order-label {
-          font-size: 0.85rem;
-          color: rgba(245, 245, 245, 0.6);
-          font-weight: 500;
-        }
-
-        .order-value {
-          font-size: 1.1rem;
-          font-weight: 700;
-          color: #D4AF37;
-          font-family: 'Playfair Display', serif;
-        }
-
-        .status-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          border-radius: 20px;
-          font-size: 0.85rem;
-          font-weight: 600;
-          white-space: nowrap;
-        }
-
-        .order-content {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .order-date {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          color: rgba(245, 245, 245, 0.7);
-          font-size: 0.9rem;
-        }
-
-        .order-items {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .items-preview {
-          display: flex;
-          gap: 0.5rem;
-        }
-
-        .item-preview {
-          width: 40px;
-          height: 40px;
-          border-radius: 8px;
-          overflow: hidden;
-          position: relative;
-        }
-
-        .item-preview img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .more-items {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.7);
-          color: #F5F5F5;
-          font-size: 0.75rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 600;
-        }
-
-        .items-count {
-          color: rgba(245, 245, 245, 0.7);
-          font-size: 0.9rem;
-          font-weight: 500;
-        }
-
-        .order-total {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding-top: 1rem;
-          border-top: 1px solid rgba(212, 175, 55, 0.1);
-        }
-
-        .total-label {
-          color: rgba(245, 245, 245, 0.7);
-          font-size: 0.9rem;
-          font-weight: 500;
-        }
-
-        .total-value {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-family: 'Playfair Display', serif;
-          font-size: 1.4rem;
-          font-weight: 700;
-          color: #D4AF37;
-        }
-
-        .order-footer {
-          display: flex;
-          gap: 0.75rem;
-          padding-top: 1rem;
-          border-top: 1px solid rgba(212, 175, 55, 0.1);
-        }
-
-        .btn {
-          padding: 0.75rem 1.5rem;
-          border-radius: 12px;
-          font-weight: 600;
-          font-size: 0.9rem;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          border: none;
-          font-family: inherit;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.5rem;
-          flex: 1;
-        }
-
-        .btn-primary {
-          background: linear-gradient(45deg, #4B1C2F, #014421);
-          color: #F7E7CE;
-          border: 1px solid rgba(212, 175, 55, 0.3);
-        }
-
-        .btn-primary:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 20px rgba(75, 28, 47, 0.3);
-        }
-
-        .btn-outline {
-          background: transparent;
-          border: 1px solid rgba(212, 175, 55, 0.3);
-          color: #D4AF37;
-        }
-
-        .btn-outline:hover {
-          background: rgba(212, 175, 55, 0.1);
-          transform: translateY(-2px);
-        }
-
-        .btn-secondary {
-          background: rgba(75, 28, 47, 0.3);
-          border: 1px solid rgba(75, 28, 47, 0.4);
-          color: #F5F5F5;
-        }
-
-        .btn-secondary:hover {
-          background: rgba(75, 28, 47, 0.4);
-          transform: translateY(-2px);
-        }
-
-        /* Order Details Modal */
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.9);
-          backdrop-filter: blur(20px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          padding: 2rem;
-          animation: fadeIn 0.3s ease-out;
-        }
-
-        .order-details-modal {
-          background: linear-gradient(135deg, 
-            rgba(28, 28, 28, 0.98) 0%,
-            rgba(45, 45, 45, 0.98) 100%
-          );
-          border: 1px solid rgba(212, 175, 55, 0.3);
-          border-radius: 28px;
-          width: 100%;
-          max-width: 900px;
-          max-height: 90vh;
-          overflow: hidden;
-          box-shadow: 0 30px 80px rgba(212, 175, 55, 0.2);
-          animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .modal-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          padding: 2rem 2.5rem;
-          border-bottom: 1px solid rgba(212, 175, 55, 0.2);
-          background: linear-gradient(135deg, 
-            rgba(75, 28, 47, 0.3) 0%,
-            rgba(75, 28, 47, 0.1) 100%
-          );
-        }
-
-        .modal-title h2 {
-          font-family: 'Playfair Display', serif;
-          font-size: 2rem;
-          color: #F5F5F5;
-          margin: 0 0 0.25rem 0;
-          background: linear-gradient(45deg, #F5F5F5, #D4AF37);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-
-        .modal-subtitle {
-          color: rgba(245, 245, 245, 0.7);
-          font-size: 0.95rem;
-          margin: 0;
-        }
-
-        .close-modal {
-          background: rgba(212, 175, 55, 0.1);
-          border: 1px solid rgba(212, 175, 55, 0.3);
-          color: #D4AF37;
-          width: 44px;
-          height: 44px;
-          border-radius: 12px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.3s ease;
-        }
-
-        .close-modal:hover {
-          background: rgba(212, 175, 55, 0.2);
-          transform: rotate(90deg);
-        }
-
-        .modal-body {
-          padding: 2.5rem;
-          overflow-y: auto;
-          max-height: calc(90vh - 200px);
-        }
-
-        .modal-section {
-          margin-bottom: 2rem;
-        }
-
-        .modal-section:last-child {
-          margin-bottom: 0;
-        }
-
-        .section-title {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          color: #F5F5F5;
-          font-family: 'Playfair Display', serif;
-          font-size: 1.3rem;
-          margin: 0 0 1.5rem 0;
-        }
-
-        /* Order Details Grid */
-        .order-details-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 1rem;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(212, 175, 55, 0.1);
-          border-radius: 16px;
-          padding: 1.5rem;
-        }
-
-        .detail-row {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .detail-label {
-          color: rgba(245, 245, 245, 0.6);
-          font-size: 0.9rem;
-          font-weight: 500;
-        }
-
-        .detail-value {
-          color: #F5F5F5;
-          font-size: 1rem;
-          font-weight: 600;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .detail-value.status {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          border-radius: 20px;
-          width: fit-content;
-        }
-
-        /* Items List */
-        .items-list {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .item-detail {
-          display: grid;
-          grid-template-columns: auto 1fr auto;
-          gap: 1.25rem;
-          align-items: center;
-          padding: 1.25rem;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(212, 175, 55, 0.1);
-          border-radius: 16px;
-          transition: all 0.3s ease;
-        }
-
-        .item-detail:hover {
-          border-color: rgba(212, 175, 55, 0.2);
-          background: rgba(212, 175, 55, 0.02);
-        }
-
-        .item-image {
-          width: 80px;
-          height: 100px;
-          border-radius: 12px;
-          overflow: hidden;
-        }
-
-        .item-image img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .item-info {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .item-name {
-          font-family: 'Playfair Display', serif;
-          font-size: 1.1rem;
-          color: #F5F5F5;
-          margin: 0;
-        }
-
-        .item-meta {
-          display: flex;
-          gap: 1rem;
-          font-size: 0.85rem;
-          color: rgba(245, 245, 245, 0.6);
-        }
-
-        .item-category {
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        .item-brand {
-          color: #D4AF37;
-          font-weight: 500;
-        }
-
-        .item-quantity {
-          color: rgba(245, 245, 245, 0.8);
-          font-size: 0.9rem;
-          font-weight: 500;
-        }
-
-        .item-price {
-          text-align: right;
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        .price-amount {
-          font-family: 'Playfair Display', serif;
-          font-size: 1.3rem;
-          font-weight: 700;
-          color: #D4AF37;
-        }
-
-        .original-price {
-          color: rgba(245, 245, 245, 0.4);
-          text-decoration: line-through;
-          font-size: 0.9rem;
-        }
-
-        /* Shipping Details */
-        .shipping-details {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 1rem;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(212, 175, 55, 0.1);
-          border-radius: 16px;
-          padding: 1.5rem;
-        }
-
-        /* Payment Summary */
-        .payment-summary {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(212, 175, 55, 0.1);
-          border-radius: 16px;
-          padding: 1.5rem;
-        }
-
-        .summary-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0.75rem 0;
-          color: rgba(245, 245, 245, 0.8);
-        }
-
-        .summary-row.discount {
-          color: #4CAF50;
-        }
-
-        .summary-row .free {
-          color: #D4AF37;
-          font-weight: 700;
-        }
-
-        .summary-divider {
-          height: 1px;
-          background: linear-gradient(90deg, 
-            transparent, 
-            rgba(212, 175, 55, 0.3), 
-            transparent
-          );
-          margin: 0.5rem 0;
-        }
-
-        .summary-row.total {
-          font-size: 1.2rem;
-          font-weight: 700;
-          color: #F5F5F5;
-          margin-top: 0.5rem;
-        }
-
-        .total-amount {
-          font-family: 'Playfair Display', serif;
-          font-size: 1.6rem;
-          background: linear-gradient(45deg, #D4AF37, #F7E7CE);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-
-        /* Modal Footer */
-        .modal-footer {
-          padding: 1.5rem 2.5rem;
-          border-top: 1px solid rgba(212, 175, 55, 0.2);
-          background: rgba(28, 28, 28, 0.9);
-          display: flex;
-          justify-content: flex-end;
-          gap: 1rem;
-        }
-
-        /* Animations */
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        @keyframes slideUp {
-          from { 
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to { 
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-          .orders-container {
-            padding: 1.5rem;
-          }
-          
-          .page-title {
-            font-size: 2rem;
-          }
-          
-          .orders-grid {
-            grid-template-columns: 1fr;
-          }
-          
-          .order-header {
-            flex-direction: column;
-            gap: 0.75rem;
-          }
-          
-          .status-badge {
-            align-self: flex-start;
-          }
-          
-          .order-footer {
-            flex-direction: column;
-          }
-          
-          .btn {
-            width: 100%;
-          }
-          
-          .modal-header,
-          .modal-body,
-          .modal-footer {
-            padding: 1.5rem;
-          }
-          
-          .item-detail {
-            grid-template-columns: 1fr;
-            text-align: center;
-          }
-          
-          .item-image {
-            margin: 0 auto;
-          }
-          
-          .item-price {
-            text-align: center;
-          }
-          
-          .modal-footer {
-            flex-direction: column;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .stats-grid {
-            grid-template-columns: 1fr;
-          }
-          
-          .filter-buttons {
-            flex-direction: column;
-          }
-          
-          .filter-btn {
-            width: 100%;
-          }
-        }
-      `}</style>
+      {/* ORDER DETAILS & VISUAL TRACKING MODAL */}
+      {showOrderDetails && selectedOrder && (
+        <div className="order-modal-overlay" onClick={() => setShowOrderDetails(false)}>
+          <div className="order-modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="order-modal-header">
+              <div>
+                <h2 className="order-modal-title">Order Details & Lifecycle Tracking</h2>
+                <p className="order-modal-subtitle">Order #{selectedOrder.orderId || selectedOrder._id}</p>
+              </div>
+              <button className="order-modal-close" onClick={() => setShowOrderDetails(false)}>
+                <X size={18} color="#2C221E" />
+              </button>
+            </div>
+
+            <div className="order-modal-body">
+              {/* Visual Order Lifecycle Timeline */}
+              <div className="order-modal-section">
+                <h3 className="order-section-heading">
+                  <Truck size={16} color="#DE7356" />
+                  Delivery Progression
+                </h3>
+
+                <div className="timeline-tracker">
+                  {getSimulatedTimeline(selectedOrder).map((step, idx) => (
+                    <div
+                      key={step.id}
+                      className={`timeline-step ${step.completed ? 'completed' : ''} ${step.current ? 'current' : ''} ${step.isError ? 'error' : ''}`}
+                    >
+                      <div className="timeline-icon-node">
+                        {step.isError ? (
+                          <XCircle size={14} color="#FFF" />
+                        ) : step.completed ? (
+                          <CheckCircle size={14} color="#FFF" />
+                        ) : (
+                          <Clock size={12} color="#7A6F68" />
+                        )}
+                      </div>
+                      <div className="timeline-info">
+                        <div className="timeline-step-label">{step.label}</div>
+                        <div className="timeline-step-date">{step.date}</div>
+                      </div>
+                      {idx < getSimulatedTimeline(selectedOrder).length - 1 && (
+                        <div className={`timeline-connector ${step.completed ? 'filled' : ''}`} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Overview Section */}
+              <div className="order-modal-section">
+                <h3 className="order-section-heading">
+                  <ShoppingBag size={16} color="#DE7356" />
+                  Overview
+                </h3>
+
+                <div className="order-detail-grid">
+                  <div className="order-detail-cell">
+                    <span className="order-cell-label">Order Date</span>
+                    <span className="order-cell-val">{formatDateTime(selectedOrder.createdAt || selectedOrder.orderDate)}</span>
+                  </div>
+
+                  <div className="order-detail-cell">
+                    <span className="order-cell-label">Current Status</span>
+                    <span className={getStatusBadge(selectedOrder).className}>
+                      {getStatusBadge(selectedOrder).icon}
+                      {getStatusBadge(selectedOrder).label}
+                    </span>
+                  </div>
+
+                  <div className="order-detail-cell">
+                    <span className="order-cell-label">Payment Method</span>
+                    <span className="order-cell-val">
+                      <CreditCard size={14} color="#7A6F68" style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                      {selectedOrder.paymentMethod === 'cash_on_delivery' ? 'Cash on Delivery' : 'Demo Online Payment'}
+                    </span>
+                  </div>
+
+                  <div className="order-detail-cell">
+                    <span className="order-cell-label">Payment Status</span>
+                    <span className="order-cell-val" style={{
+                      color: selectedOrder.paymentStatus === 'successful' ? '#27AE60' : '#D4AF37',
+                      fontWeight: 700
+                    }}>
+                      {selectedOrder.paymentStatus === 'successful' ? 'Successful' : 'Pending (On Delivery)'}
+                    </span>
+                  </div>
+
+                  {selectedOrder.transactionId && (
+                    <div className="order-detail-cell">
+                      <span className="order-cell-label">Transaction ID</span>
+                      <span className="order-cell-val">{selectedOrder.transactionId}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Items Section */}
+              <div className="order-modal-section">
+                <h3 className="order-section-heading">
+                  <Package size={16} color="#DE7356" />
+                  Order Items ({selectedOrder.items?.length || 0})
+                </h3>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {(selectedOrder.items || []).map((item, idx) => {
+                    const itemImage = item?.image || item?.product?.image || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=500&auto=format&fit=crop&q=80';
+                    const price = Number(item?.price || item?.product?.price || 0);
+
+                    return (
+                      <div key={idx} className="order-modal-item-row">
+                        <img
+                          src={itemImage}
+                          alt={item?.name || 'Item'}
+                          className="order-modal-item-img"
+                          onError={(e) => {
+                            e.target.src = 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=500&auto=format&fit=crop&q=80';
+                          }}
+                        />
+
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 600, color: '#2C221E' }}>{item?.name || 'Product'}</div>
+                          <div style={{ fontSize: 12, color: '#7A6F68', marginTop: 2 }}>
+                            {item?.category || 'Fashion'} {item?.brand ? `• ${item.brand}` : ''}
+                          </div>
+                          <div style={{ fontSize: 12, color: '#7A6F68' }}>Quantity: {item?.quantity || 1}</div>
+
+                          <button
+                            type="button"
+                            className="order-rate-review-btn"
+                            onClick={() => {
+                              const pId = item?.product?._id || item?.product || item?.id;
+                              if (pId) {
+                                setShowOrderDetails(false);
+                                navigate(`/product/${pId}`);
+                              }
+                            }}
+                          >
+                            <Star size={12} fill="#DE7356" color="#DE7356" />
+                            Rate & Review Product
+                          </button>
+                        </div>
+
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#2C221E' }}>
+                          ₹{(price * (item?.quantity || 1)).toLocaleString('en-IN')}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Shipping Address Section */}
+              {selectedOrder.shippingAddress && (
+                <div className="order-modal-section">
+                  <h3 className="order-section-heading">
+                    <MapPin size={16} color="#DE7356" />
+                    Shipping Address
+                  </h3>
+
+                  <div className="order-detail-grid">
+                    <div className="order-detail-cell">
+                      <span className="order-cell-label">Recipient</span>
+                      <span className="order-cell-val">{selectedOrder.shippingAddress.name || 'Customer'}</span>
+                    </div>
+
+                    <div className="order-detail-cell">
+                      <span className="order-cell-label">Address</span>
+                      <span className="order-cell-val">{selectedOrder.shippingAddress.address || 'N/A'}</span>
+                    </div>
+
+                    <div className="order-detail-cell">
+                      <span className="order-cell-label">City / Postal Code</span>
+                      <span className="order-cell-val">
+                        {selectedOrder.shippingAddress.city || ''} {selectedOrder.shippingAddress.postalCode ? `- ${selectedOrder.shippingAddress.postalCode}` : ''}
+                      </span>
+                    </div>
+
+                    <div className="order-detail-cell">
+                      <span className="order-cell-label">Contact Phone</span>
+                      <span className="order-cell-val">
+                        <Phone size={13} color="#7A6F68" style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                        {selectedOrder.shippingAddress.phone || 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Summary Section */}
+              <div className="order-modal-section">
+                <h3 className="order-section-heading">
+                  <CreditCard size={16} color="#DE7356" />
+                  Payment Summary
+                </h3>
+
+                <div className="order-payment-box">
+                  <div className="order-summary-row">
+                    <span style={{ color: '#7A6F68' }}>Subtotal</span>
+                    <span style={{ color: '#2C221E', fontWeight: 600 }}>
+                      ₹{Math.round(selectedOrder.subtotal || selectedOrder.totalAmount || 0).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+
+                  {selectedOrder.discount > 0 && (
+                    <div className="order-summary-row">
+                      <span style={{ color: '#7A6F68' }}>Discount Applied</span>
+                      <span style={{ color: '#27AE60', fontWeight: 600 }}>
+                        -₹{Math.round(selectedOrder.discount).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="order-summary-row">
+                    <span style={{ color: '#7A6F68' }}>Shipping</span>
+                    <span style={{ color: '#27AE60', fontWeight: 700 }}>FREE</span>
+                  </div>
+
+                  <div className="order-summary-row">
+                    <span style={{ color: '#7A6F68' }}>Tax (10%)</span>
+                    <span style={{ color: '#2C221E', fontWeight: 600 }}>
+                      ₹{Math.round(selectedOrder.tax || ((selectedOrder.subtotal || 0) * 0.1)).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+
+                  <div style={{ height: 1, background: '#EFE7DF', margin: '4px 0' }} />
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: '#2C221E' }}>
+                      {selectedOrder.paymentMethod === 'cash_on_delivery' ? 'Amount Due' : 'Total Paid'}
+                    </span>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: '#DE7356' }}>
+                      ₹{Math.round(selectedOrder.finalAmount || selectedOrder.totalAmount || 0).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="order-modal-footer">
+              <button className="order-btn-secondary" onClick={() => setShowOrderDetails(false)}>
+                Close
+              </button>
+
+              {['processing', 'shipped'].includes(resolveOrderStatus(selectedOrder)) && (
+                <button
+                  className="order-btn-danger"
+                  onClick={() => {
+                    setShowOrderDetails(false);
+                    promptCancelOrder(selectedOrder);
+                  }}
+                >
+                  <XCircle size={14} />
+                  Cancel Order
+                </button>
+              )}
+
+              <button className="order-btn-primary" onClick={() => handleDownloadInvoice(selectedOrder)}>
+                <Download size={14} />
+                Download Invoice
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-};
-
-export default OrdersPage;
+}

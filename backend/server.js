@@ -31,8 +31,8 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // ===== Admin & API Routes =====
 app.use('/api/admin', adminRoutes);
@@ -45,7 +45,6 @@ app.use('/api/coupons', require('./routes/coupons'));
 app.use('/api/customers', require('./routes/customer'));
 app.use('/api/customer', require('./routes/customer'));
 app.use('/api/categories', require('./routes/categories'));
-app.use('/api/vip', require('./routes/vip'));
 app.use('/api/chat', require('./routes/chat'));
 app.use('/api/notifications', require('./routes/notifications'));
 

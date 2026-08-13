@@ -13,10 +13,15 @@ import UserLogin from './pages/user/UserLogin';
 import UserDashboard from './pages/user/UserDashboard';
 import UserProfile from './pages/user/UserProfile';
 import CartPage from './pages/user/CartPage';
+import CheckoutPage from './pages/user/CheckoutPage';
 import WishlistPage from './pages/user/WishlistPage';
 import OrdersPage from './pages/user/OrdersPage';
 import UserCoupons from './pages/user/UserCoupons';
 import ProductDetailPage from './pages/user/ProductDetailPage';
+import ShopDiscoveryPage from './pages/user/ShopDiscoveryPage';
+import DepartmentShoppingPage from './pages/user/DepartmentShoppingPage';
+import SearchResultsPage from './pages/user/SearchResultsPage';
+import UserChatModal from './components/user/UserChatModal';
 
 // Import all admin pages
 import UnifiedLogin from './pages/UnifiedLogin';
@@ -33,14 +38,22 @@ import MessagesManagement from './pages/admin/MessagesManagement';
 import AnalyticsPage from './pages/admin/AnalyticsPage';
 import AdminProfile from './pages/admin/AdminProfile';
 import CategoryManagement from './pages/admin/CategoryManagement';
-import VipSubscribersManagement from './pages/admin/VipSubscribersManagement';
 
 import './App.css';
+
+const safeJsonParse = (str, fallback = null) => {
+  if (!str || str === 'undefined') return fallback;
+  try {
+    return JSON.parse(str);
+  } catch (_) {
+    return fallback;
+  }
+};
 
 // Simple Protected Route Component for Admin
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('adminToken');
-  const user = JSON.parse(localStorage.getItem('adminUser') || 'null');
+  const user = safeJsonParse(localStorage.getItem('adminUser'), null);
   
   if (token && user && user.role === 'admin') {
     return children;
@@ -52,7 +65,7 @@ const ProtectedRoute = ({ children }) => {
 // Simple Protected Route Component for User
 const ProtectedRouteUser = ({ children }) => {
   const token = localStorage.getItem('userToken');
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const user = safeJsonParse(localStorage.getItem('user'), null);
   
   if (token && user) {
     return children;
@@ -64,7 +77,7 @@ const ProtectedRouteUser = ({ children }) => {
 // Public Route Component for Admin
 const PublicRouteAdmin = ({ children }) => {
   const token = localStorage.getItem('adminToken');
-  const user = JSON.parse(localStorage.getItem('adminUser') || 'null');
+  const user = safeJsonParse(localStorage.getItem('adminUser'), null);
   
   if (token && user && user.role === 'admin') {
     return <Navigate to="/admin/dashboard" />;
@@ -76,7 +89,7 @@ const PublicRouteAdmin = ({ children }) => {
 // Public Route Component for User
 const PublicRouteUser = ({ children }) => {
   const token = localStorage.getItem('userToken');
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const user = safeJsonParse(localStorage.getItem('user'), null);
   
   if (token && user) {
     return <Navigate to="/user/dashboard" />;
@@ -96,6 +109,9 @@ const AppContent = () => {
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<LandingPage />} />
+              <Route path="/shop" element={<ShopDiscoveryPage />} />
+              <Route path="/shop/:departmentSlug" element={<DepartmentShoppingPage />} />
+              <Route path="/search" element={<SearchResultsPage />} />
               <Route path="/product/:id" element={<ProductDetailPage />} />
               <Route path="/user/product/:id" element={<ProductDetailPage />} />
               
@@ -142,14 +158,6 @@ const AppContent = () => {
                 element={
                   <ProtectedRoute>
                     <CategoryManagement />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/admin/vip-subscribers" 
-                element={
-                  <ProtectedRoute>
-                    <VipSubscribersManagement />
                   </ProtectedRoute>
                 } 
               />
@@ -236,6 +244,14 @@ const AppContent = () => {
                 } 
               />
               <Route 
+                path="/user/checkout" 
+                element={
+                  <ProtectedRouteUser>
+                    <CheckoutPage />
+                  </ProtectedRouteUser>
+                } 
+              />
+              <Route 
                 path="/user/coupons" 
                 element={
                   <ProtectedRouteUser>
@@ -270,9 +286,11 @@ const AppContent = () => {
                 } 
               />
               
+              
               {/* Redirect to landing page for unknown routes */}
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
+            <UserChatModal />
           </div>
         </Router>
       </ProductProvider>

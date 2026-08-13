@@ -39,11 +39,11 @@
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
 
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; background: #FDF9F3; }
 
   body {
     font-family: 'Sora', sans-serif;
-    background: var(--cream);
+    background: #FDF9F3;
     color: var(--dark);
     margin: 0;
     padding: 0;
@@ -1059,24 +1059,27 @@ select:-webkit-autofill:active {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: var(--white);
-  border: none;
+  background: #FFFFFF;
+  border: 1px solid #EFE7DF;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-light);
+  color: #7A6F68;
   cursor: pointer;
-  box-shadow: var(--shadow-card);
-  transition: all 0.22s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  transition: all 0.22s ease;
   opacity: 0;
+  z-index: 3;
 }
 
-.product-card:hover .product-card-wishlist {
-  opacity: 1;
+.product-card:hover .product-card-wishlist,
+.product-card-wishlist.active {
+  opacity: 1 !important;
 }
 
 .product-card-wishlist:hover {
-  color: var(--pink);
+  color: #C0392B;
+  border-color: #C0392B;
   transform: scale(1.12);
 }
 
@@ -1497,12 +1500,14 @@ select:-webkit-autofill:active {
 
 /* Heart Icon Wishlist Active State */
 .product-card-wishlist.active {
-  background: rgba(217, 107, 150, 0.15) !important;
-  border-color: var(--pink) !important;
+  background: #FFFFFF !important;
+  border: 1.5px solid #C0392B !important;
+  box-shadow: 0 3px 10px rgba(192, 57, 43, 0.25) !important;
+  opacity: 1 !important;
 }
 .product-card-wishlist.active svg {
-  fill: var(--pink);
-  color: var(--pink);
+  fill: #C0392B !important;
+  color: #C0392B !important;
 }
 
 /* Navbar avatar image */

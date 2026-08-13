@@ -7,15 +7,15 @@ import ActionMenu from '../../components/admin/ActionMenu';
 import Drawer from '../../components/admin/Drawer';
 import Button from '../../components/admin/Button';
 import ConfirmationModal from '../../components/admin/ConfirmationModal';
-import { chatAPI } from '../../utils/api';
 import { useToast } from '../../components/common/Toast/useToast';
-import { 
-  Pencil, UserX, UserCheck, Trash2, MessageCircle, 
-  Send, CheckCheck, Eye, EyeOff, ShieldCheck, Mail, User, Clock, Plus
+import {
+  Pencil, UserX, UserCheck, Trash2,
+  Eye, EyeOff, ShieldCheck, Mail, User, Clock, Plus
 } from 'lucide-react';
 
 const AdminManagement = () => {
   const toast = useToast();
+
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -28,13 +28,6 @@ const AdminManagement = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [adminToDelete, setAdminToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-
-  // Admin Chat Drawer state
-  const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
-  const [selectedAdminForChat, setSelectedAdminForChat] = useState(null);
-  const [adminChatMessages, setAdminChatMessages] = useState([]);
-  const [chatInput, setChatInput] = useState('');
-  const [chatSending, setChatSending] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -70,49 +63,6 @@ const AdminManagement = () => {
   useEffect(() => {
     fetchAdmins();
   }, []);
-
-  const openAdminChat = async (admin) => {
-    setSelectedAdminForChat(admin);
-    setChatDrawerOpen(true);
-    fetchAdminMessages(admin._id);
-  };
-
-  const fetchAdminMessages = async (adminId) => {
-    try {
-      const data = await chatAPI.getMessages(adminId);
-      if (data.success && Array.isArray(data.messages)) {
-        setAdminChatMessages(data.messages);
-      } else {
-        setAdminChatMessages([]);
-      }
-    } catch (err) {
-      console.error('Error fetching admin chat messages:', err);
-      setAdminChatMessages([]);
-    }
-  };
-
-  const handleSendAdminChatMessage = async (e) => {
-    e.preventDefault();
-    if (!chatInput.trim() || !selectedAdminForChat) return;
-    const targetId = selectedAdminForChat._id;
-    setChatSending(true);
-    try {
-      const data = await chatAPI.sendMessage({
-        customerId: targetId,
-        sender: 'admin',
-        senderName: currentAdmin?.firstName ? `${currentAdmin.firstName} (Admin)` : 'Main Admin',
-        message: chatInput.trim()
-      });
-      if (data.success && data.chatMessage) {
-        setAdminChatMessages(prev => [...prev, data.chatMessage]);
-        setChatInput('');
-      }
-    } catch (err) {
-      console.error('Error sending admin message:', err);
-    } finally {
-      setChatSending(false);
-    }
-  };
 
   const handleChange = (e) => {
     setFormData({
@@ -251,7 +201,15 @@ const AdminManagement = () => {
       render: (row) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={styles.avatarCircle}>
-            {(row.firstName || row.username || 'A').charAt(0).toUpperCase()}
+            {row.avatarUrl ? (
+              <img
+                src={row.avatarUrl}
+                alt={row.firstName || 'Admin'}
+                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+              />
+            ) : (
+              (row.firstName || row.username || 'A').charAt(0).toUpperCase()
+            )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -286,11 +244,6 @@ const AdminManagement = () => {
       render: (row) => (
         <ActionMenu
           items={[
-            {
-              label: 'Direct Admin Chat',
-              icon: <MessageCircle size={14} color="var(--admin-gold)" />,
-              onClick: () => openAdminChat(row)
-            },
             ...(isMainAdminUser && !row.isMainAdmin ? [
               {
                 label: row.status === 'active' ? 'Deactivate Admin' : 'Activate Admin',
@@ -372,76 +325,6 @@ const AdminManagement = () => {
         emptyTitle="No Admins Found"
         emptyDescription="Create an admin account to delegate store management."
       />
-
-      {/* Admin-to-Admin Live Chat Drawer */}
-      <Drawer
-        isOpen={chatDrawerOpen}
-        onClose={() => setChatDrawerOpen(false)}
-        title={selectedAdminForChat ? `${selectedAdminForChat.firstName} ${selectedAdminForChat.lastName || ''}` : 'Admin Channel'}
-        subtitle={selectedAdminForChat ? `@${selectedAdminForChat.username} • Administrator` : 'Real-time Admin Chat'}
-        width="540px"
-      >
-        {selectedAdminForChat && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={styles.adminChatCard}>
-              <div style={styles.avatarCircle}>
-                {(selectedAdminForChat.firstName || selectedAdminForChat.username || 'A').charAt(0).toUpperCase()}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontWeight: '700', color: 'var(--admin-text-primary)', fontSize: '15px' }}>
-                    {selectedAdminForChat.firstName} {selectedAdminForChat.lastName}
-                  </span>
-                  <span style={{ fontSize: '10px', padding: '2px 6px', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10B981', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>ONLINE</span>
-                </div>
-                <span style={{ fontSize: '12px', color: '#A0A0AB' }}>{selectedAdminForChat.email}</span>
-              </div>
-            </div>
-
-            <div style={styles.chatContainer}>
-              <div style={styles.chatFeed}>
-                {adminChatMessages.length === 0 ? (
-                  <div style={styles.chatEmpty}>
-                    <MessageCircle size={32} color="#D4AF37" style={{ marginBottom: '8px' }} />
-                    <p style={{ margin: 0, color: '#A0A0AB', fontSize: '13px' }}>
-                      Direct communication channel with {selectedAdminForChat.firstName}.
-                    </p>
-                  </div>
-                ) : (
-                  adminChatMessages.map((msg, i) => {
-                    const isSelf = msg.senderName?.includes(currentAdmin?.firstName || 'Admin');
-                    return (
-                      <div key={i} style={{ ...styles.chatBubbleWrap, justifyContent: isSelf ? 'flex-end' : 'flex-start' }}>
-                        <div style={{ ...styles.chatBubble, ...(isSelf ? styles.chatBubbleSelf : styles.chatBubblePeer) }}>
-                          <div style={styles.chatSender}>{msg.senderName || 'Admin'}</div>
-                          <div style={styles.chatText}>{msg.message}</div>
-                          <div style={styles.chatMeta}>
-                            <span>{new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            {isSelf && <CheckCheck size={12} color="#D4AF37" />}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              <form onSubmit={handleSendAdminChatMessage} style={styles.chatInputRow}>
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Type message to admin..."
-                  style={styles.chatInputField}
-                />
-                <button type="submit" disabled={chatSending || !chatInput.trim()} style={styles.chatSendBtn}>
-                  <Send size={16} />
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-      </Drawer>
 
       {/* Add New Admin Modal */}
       {modalOpen && (

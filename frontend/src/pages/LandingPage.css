@@ -160,36 +160,41 @@
 }
 
 .nav-link {
-  background: none;
+  background: none !important;
   border: none;
   font-family: var(--font-sans);
   font-size: 0.9rem;
   font-weight: 400;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: rgba(250, 247, 242, 0.85);
+  color: rgba(250, 247, 242, 0.8);
   cursor: pointer;
   position: relative;
   padding: 0.4rem 0;
   transition: color 0.3s ease;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .nav-link::after {
   content: '';
   position: absolute;
-  bottom: 0;
+  bottom: -2px;
   left: 0;
   width: 0%;
   height: 1.5px;
-  background-color: var(--gold-champagne);
-  transition: width 0.3s ease;
+  background-color: #D4AF37;
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.nav-link:hover {
-  color: #FFFFFF;
+.nav-link:hover,
+.nav-link:focus {
+  color: #D4AF37;
+  background: none !important;
 }
 
-.nav-link:hover::after {
+.nav-link:hover::after,
+.nav-link:focus::after {
   width: 100%;
 }
 
@@ -371,25 +376,38 @@
   align-items: center;
 }
 
-.hero-badge {
+.landing-hero-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(197, 160, 89, 0.15);
-  border: 1px solid rgba(197, 160, 89, 0.4);
-  backdrop-filter: blur(8px);
-  padding: 0.45rem 1.2rem;
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  padding: 0.5rem 1.4rem;
   border-radius: 30px;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 3px;
-  color: var(--gold-champagne);
+  color: #FFFFFF !important;
   margin-bottom: 1.5rem;
   text-transform: uppercase;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: default;
 }
 
-.badge-icon {
-  color: var(--gold-champagne);
+.landing-hero-badge:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: #FFFFFF !important;
+  color: #FFFFFF !important;
+  transform: translateY(-1px);
+}
+
+.landing-hero-badge .badge-icon {
+  color: #FFFFFF !important;
+  transition: transform 0.3s ease;
+}
+
+.landing-hero-badge:hover .badge-icon {
+  transform: scale(1.15) rotate(15deg);
 }
 
 .hero-headline {
@@ -1159,7 +1177,7 @@
   display: grid;
   grid-template-columns: 1.2fr 0.8fr;
   gap: 4rem;
-  align-items: flex-start;
+  align-items: stretch;   /* equal height cards */
 }
 
 .concierge-form-wrap {
@@ -1168,6 +1186,8 @@
   border-radius: 16px;
   box-shadow: var(--shadow-subtle);
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  height: 100%;           /* stretch to match sibling card */
+  box-sizing: border-box;
 }
 
 .concierge-title {
@@ -1363,6 +1383,8 @@
   border: 1px solid var(--gold-border);
   position: relative;
   overflow: hidden;
+  height: 100%;           /* stretch to match sibling card */
+  box-sizing: border-box;
 }
 
 .newsletter-badge {
@@ -1389,123 +1411,137 @@
   font-weight: 300;
 }
 
-/* Unified Luxury VIP Subscription Control */
-.newsletter-form {
-  margin-bottom: 2rem;
-  width: 100%;
+/* VIP Subscription form — override any global index.css .newsletter-form leakage */
+.newsletter-card .newsletter-form {
+  margin-bottom: 2rem !important;
+  width: 100% !important;
+  display: block !important;       /* kill global flex row layout */
+  max-width: none !important;      /* kill global 460px cap */
+  gap: 0 !important;
+  background: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
 }
 
-.vip-unified-control {
-  position: relative;
-  display: flex;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(212, 175, 55, 0.4);
-  border-radius: 40px;
-  padding: 4px 4px 4px 18px;
-  height: 56px;
-  box-sizing: border-box;
-  transition: all 0.35s ease;
-  width: 100%;
+/* Single clean outline border container - perfect horizontal pill */
+.vip-unified-control-pill {
+  display: flex !important;
+  align-items: center !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1.5px solid rgba(212, 175, 55, 0.5) !important;
+  border-radius: 40px !important;
+  padding: 4px 4px 4px 18px !important;
+  height: 56px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  transition: border-color 0.3s ease;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
-.vip-unified-control:focus-within {
-  border-color: var(--gold-champagne, #D4AF37);
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+.vip-unified-control-pill:focus-within {
+  border-color: #D4AF37 !important;
+  box-shadow: none !important;
 }
 
-.vip-unified-control .mail-icon {
-  color: var(--gold-champagne, #D4AF37);
-  flex-shrink: 0;
+.vip-unified-control-pill .mail-icon {
+  color: #D4AF37 !important;
+  flex-shrink: 0 !important;
+  opacity: 0.85 !important;
 }
 
-.vip-unified-control input {
+.vip-unified-control-pill input {
   background: transparent !important;
   border: none !important;
   outline: none !important;
-  color: #F9F8F6 !important;
-  font-family: var(--font-sans);
-  font-size: 0.95rem;
-  font-weight: 500;
-  flex: 1;
-  min-width: 0;
-  padding: 0 0.8rem;
-  height: 100%;
-  box-sizing: border-box;
+  box-shadow: none !important;
+  color: #FFFFFF !important;
+  font-family: var(--font-sans) !important;
+  font-size: 0.92rem !important;
+  font-weight: 400 !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+  padding: 0 0.8rem !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
+  caret-color: #D4AF37 !important;
 }
 
-.vip-unified-control input::placeholder {
-  color: rgba(249, 248, 246, 0.55) !important;
+.vip-unified-control-pill input::placeholder {
+  color: rgba(255, 255, 255, 0.38) !important;
+  font-weight: 300 !important;
 }
 
-.vip-unified-control input:-webkit-autofill,
-.vip-unified-control input:-webkit-autofill:hover,
-.vip-unified-control input:-webkit-autofill:focus,
-.vip-unified-control input:-webkit-autofill:active {
-  -webkit-text-fill-color: #F9F8F6 !important;
+.vip-unified-control-pill input:-webkit-autofill,
+.vip-unified-control-pill input:-webkit-autofill:hover,
+.vip-unified-control-pill input:-webkit-autofill:focus,
+.vip-unified-control-pill input:-webkit-autofill:active {
+  -webkit-text-fill-color: #FFFFFF !important;
   -webkit-box-shadow: 0 0 0px 1000px #141419 inset !important;
   transition: background-color 500000s ease-in-out 0s !important;
   caret-color: #D4AF37 !important;
 }
 
-/* Subscribe Button - All States */
-.btn-vip-subscribe {
-  height: 48px;
-  border-radius: 34px;
-  background: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%);
-  color: #0D0D0E;
-  font-weight: 700;
-  font-size: 0.85rem;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  padding: 0 22px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  flex-shrink: 0;
-  position: relative;
-  overflow: hidden;
-  white-space: nowrap;
+/* Gold nested pill button */
+.btn-vip-subscribe-pill {
+  height: 46px !important;
+  border-radius: 36px !important;
+  background: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%) !important;
+  color: #0D0D0E !important;
+  font-weight: 700 !important;
+  font-size: 0.82rem !important;
+  letter-spacing: 1.5px !important;
+  text-transform: uppercase !important;
+  padding: 0 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  border: none !important;
+  outline: none !important;
+  cursor: pointer !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  box-shadow: none !important;
 }
 
-.btn-vip-subscribe::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
-  transition: left 0.6s ease;
+.btn-vip-subscribe-pill::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: -100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent) !important;
+  transition: left 0.6s ease !important;
 }
 
-.btn-vip-subscribe:hover:not(:disabled)::before {
-  left: 100%;
+.btn-vip-subscribe-pill:hover:not(:disabled)::before {
+  left: 100% !important;
 }
 
-.btn-vip-subscribe:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(212, 175, 55, 0.4);
-  background: linear-gradient(135deg, #E5C365 0%, #C59B27 100%);
+.btn-vip-subscribe-pill:hover:not(:disabled) {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3) !important;
 }
 
-.btn-vip-subscribe:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: 0 3px 12px rgba(212, 175, 55, 0.25);
+.btn-vip-subscribe-pill:active:not(:disabled) {
+  transform: translateY(0) !important;
 }
 
-.btn-vip-subscribe:disabled {
-  opacity: 0.75;
-  cursor: not-allowed;
+.btn-vip-subscribe-pill:disabled {
+  opacity: 0.75 !important;
+  cursor: not-allowed !important;
 }
 
-.btn-vip-subscribe.success {
-  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-  color: #FFFFFF;
+.btn-vip-subscribe-pill.success {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+  color: #FFFFFF !important;
 }
 
 /* Spinner element inside button */
@@ -1561,6 +1597,41 @@
 .info-item-link svg {
   color: var(--gold-champagne, #D4AF37) !important;
   flex-shrink: 0;
+}
+
+/* VIP Perks list — fills bottom space of the VIP card */
+.vip-perks-divider {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(212,175,55,0.35) 0%, rgba(212,175,55,0.05) 100%);
+  margin: 1.8rem 0 1.4rem;
+}
+
+.vip-perks-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.vip-perks-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 300;
+  color: rgba(250, 247, 242, 0.72);
+  line-height: 1.5;
+  letter-spacing: 0.2px;
+}
+
+.vip-perk-icon {
+  color: #D4AF37;
+  font-size: 0.65rem;
+  flex-shrink: 0;
+  margin-top: 3px;
+  opacity: 0.9;
 }
 
 /* Footer Contact Block & Item Spacing */

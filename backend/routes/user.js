@@ -679,10 +679,14 @@ router.get('/profile', authenticateUser, async (req, res) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        phone: user.phone || '',
+        phone: user.phone || user.mobile || '',
+        mobile: user.mobile || user.phone || '',
         address: user.address || '',
         city: user.city || '',
         country: user.country || '',
+        dob: user.dob || '',
+        gender: user.gender || '',
+        avatarUrl: user.avatarUrl || '',
         createdAt: user.createdAt,
         role: user.role
       },
@@ -707,7 +711,7 @@ router.get('/profile', authenticateUser, async (req, res) => {
 // UPDATE user profile - Add this route
 router.put('/profile', authenticateUser, async (req, res) => {
   try {
-    const { firstName, lastName, phone, address, city, country } = req.body;
+    const { firstName, lastName, phone, mobile, address, city, country, dob, gender, avatarUrl } = req.body;
     
     // Find user
     const user = await User.findById(req.user.id);
@@ -722,9 +726,13 @@ router.put('/profile', authenticateUser, async (req, res) => {
     if (firstName !== undefined) user.firstName = firstName;
     if (lastName !== undefined) user.lastName = lastName;
     if (phone !== undefined) user.phone = phone;
+    if (mobile !== undefined) user.mobile = mobile;
     if (address !== undefined) user.address = address;
     if (city !== undefined) user.city = city;
     if (country !== undefined) user.country = country;
+    if (dob !== undefined) user.dob = dob;
+    if (gender !== undefined) user.gender = gender;
+    if (avatarUrl !== undefined) user.avatarUrl = avatarUrl;
 
     await user.save();
 
@@ -740,10 +748,14 @@ router.put('/profile', authenticateUser, async (req, res) => {
         email: updatedUser.email,
         firstName: updatedUser.firstName,
         lastName: updatedUser.lastName,
-        phone: updatedUser.phone || '',
+        phone: updatedUser.phone || updatedUser.mobile || '',
+        mobile: updatedUser.mobile || updatedUser.phone || '',
         address: updatedUser.address || '',
         city: updatedUser.city || '',
         country: updatedUser.country || '',
+        dob: updatedUser.dob || '',
+        gender: updatedUser.gender || '',
+        avatarUrl: updatedUser.avatarUrl || '',
         createdAt: updatedUser.createdAt,
         role: updatedUser.role
       }
@@ -843,6 +855,88 @@ router.post('/reset-password', async (req, res) => {
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ success: false, message: 'Server error resetting password' });
+  }
+});
+
+// @desc    Change User Password
+// @route   PUT /api/users/change-password
+// @access  Private
+router.put('/change-password', authenticateUser, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Current and new password are required' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 6 characters' });
+    }
+
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Verify current password (support bcrypt match or direct match fallback)
+    let isMatch = false;
+    if (user.matchPassword) {
+      isMatch = await user.matchPassword(currentPassword);
+    } else {
+      isMatch = await bcrypt.compare(currentPassword, user.password);
+    }
+
+    if (!isMatch && currentPassword !== user.password) {
+      return res.status(400).json({ success: false, message: 'Incorrect current password' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ success: false, message: 'Server error updating password' });
+  }
+});
+
+// @desc    Get Customer Activity & Real Orders (Admin)
+// @route   GET /api/users/:id/activity
+// @access  Public / Admin
+router.get('/:id/activity', async (req, res) => {
+  try {
+    const customerId = req.params.id;
+    const Order = require('../models/Order');
+
+    const customer = await User.findById(customerId).select('-password');
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found' });
+    }
+
+    // Fetch real orders belonging strictly to this customer
+    const orders = await Order.find({ user: customerId }).sort({ createdAt: -1 });
+
+    const validOrders = orders.filter(o => (o.status || '').toLowerCase() !== 'cancelled');
+    const totalSpent = validOrders.reduce((sum, o) => sum + (o.totalAmount || o.finalAmount || 0), 0);
+    const deliveredOrders = orders.filter(o => (o.status || '').toLowerCase() === 'delivered').length;
+    const activeOrders = orders.filter(o => ['processing', 'shipped', 'out_for_delivery'].includes((o.status || '').toLowerCase())).length;
+    const cancelledOrders = orders.filter(o => (o.status || '').toLowerCase() === 'cancelled').length;
+
+    res.json({
+      success: true,
+      activity: {
+        customer,
+        orders,
+        stats: {
+          totalOrders: orders.length,
+          totalSpent: Math.round(totalSpent),
+          deliveredOrders,
+          activeOrders,
+          cancelledOrders
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user activity:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

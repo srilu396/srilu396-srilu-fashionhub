@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import PageHeader from '../../components/admin/PageHeader';
 import DataTable from '../../components/admin/DataTable';
@@ -7,10 +7,12 @@ import StatusBadge from '../../components/admin/StatusBadge';
 import ActionMenu from '../../components/admin/ActionMenu';
 import ConfirmationModal from '../../components/admin/ConfirmationModal';
 import SelectDropdown from '../../components/admin/SelectDropdown';
+import FilterDropdown from '../../components/admin/FilterDropdown';
 import BulkUploadModal from '../../components/admin/BulkUploadModal';
 import Button from '../../components/admin/Button';
+import SearchBar from '../../components/admin/SearchBar';
 import { productAPI, categoryAPI } from '../../utils/api';
-import { Edit2, Trash2, Upload, Plus } from 'lucide-react';
+import { Edit2, Trash2, Upload, Plus, X, Layers, Filter, RotateCcw } from 'lucide-react';
 import { useToast } from '../../components/common/Toast/useToast';
 
 const DEFAULT_IMAGE_SET = [
@@ -21,12 +23,25 @@ const DEFAULT_IMAGE_SET = [
 
 const ProductsManagement = () => {
   const toast = useToast();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
-  
-  // Modals state
+
+  // Initial stock filter from query parameter (e.g. Overview Low Stock Card click)
+  const initialStockFilter = searchParams.get('stockStatus') || searchParams.get('filter') || 'ALL';
+
+  // Cascading Dependent Filter & Search States
+  const [selectedDeptFilter, setSelectedDeptFilter] = useState('ALL');
+  const [selectedCatFilter, setSelectedCatFilter] = useState('ALL');
+  const [selectedSubCatFilter, setSelectedSubCatFilter] = useState('ALL');
+  const [selectedStockFilter, setSelectedStockFilter] = useState(initialStockFilter === 'low-stock' ? 'low_stock' : initialStockFilter);
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+
+  // Single Delete Product Modal
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -36,6 +51,7 @@ const ProductsManagement = () => {
   const [editFormData, setEditFormData] = useState({
     name: '',
     price: '',
+    department: '',
     category: '',
     subCategory: '',
     description: '',
@@ -48,11 +64,9 @@ const ProductsManagement = () => {
   // Bulk Upload Modal state
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
 
-  const navigate = useNavigate();
-
   const loadProducts = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
       const data = await productAPI.getAll();
       if (data.success && Array.isArray(data.products)) {
         setProducts(data.products);
@@ -70,11 +84,13 @@ const ProductsManagement = () => {
   const loadCategories = async () => {
     try {
       const data = await categoryAPI.getAll();
-      if (data.success && Array.isArray(data.categories)) {
+      if (data.success && Array.isArray(data.departments)) {
+        setCategories(data.departments);
+      } else if (data.success && Array.isArray(data.categories)) {
         setCategories(data.categories);
       }
     } catch (err) {
-      console.error('Error loading categories:', err);
+      console.error('Error loading catalog hierarchy:', err);
     }
   };
 
@@ -83,34 +99,299 @@ const ProductsManagement = () => {
     loadCategories();
   }, []);
 
-  // Filter 8 & User Refinement 1: Product Filter includes ALL categories (Active + Disabled)
-  const catalogFilterOptions = useMemo(() => {
-    const opts = [{ label: 'All Categories', value: 'ALL' }];
-    const uniqueCatNames = new Set(categories.map(c => c.name));
-    products.forEach(p => {
-      if (p.category) uniqueCatNames.add(p.category);
+  // 1. Department Filter Options
+  const departmentFilterOptions = useMemo(() => {
+    const opts = [{ label: 'All Departments', value: 'ALL' }];
+    const depts = new Set();
+    categories.forEach(d => {
+      if (d.name) depts.add(d.name);
     });
-    Array.from(uniqueCatNames).sort().forEach(catName => {
-      opts.push({ label: catName, value: catName });
+    products.forEach(p => {
+      if (p.department) depts.add(p.department);
+    });
+    Array.from(depts).sort((a, b) => a.localeCompare(b)).forEach(dName => {
+      opts.push({ label: dName, value: dName });
     });
     return opts;
   }, [categories, products]);
 
-  // Filter 8 & User Refinement 2: Edit Product options include active categories + preserve current product category if disabled
-  const editCategoryOptions = useMemo(() => {
-    const activeCats = categories
-      .filter(c => c.isEnabled !== false)
-      .map(c => c.name);
+  // 2. Category Filter Options (Cascading - Dependent on Selected Department)
+  const categoryFilterOptions = useMemo(() => {
+    const opts = [{ label: 'All Categories', value: 'ALL' }];
+    const cats = new Set();
 
-    if (selectedProduct && selectedProduct.category && !activeCats.includes(selectedProduct.category)) {
-      activeCats.push(selectedProduct.category);
+    if (selectedDeptFilter !== 'ALL') {
+      const deptObj = categories.find(d => d.name === selectedDeptFilter);
+      if (deptObj && Array.isArray(deptObj.categories)) {
+        deptObj.categories.forEach(c => {
+          if (c.name) cats.add(c.name);
+        });
+      } else {
+        products.forEach(p => {
+          if (p.department === selectedDeptFilter && p.category) {
+            cats.add(p.category);
+          }
+        });
+      }
+    } else {
+      categories.forEach(d => {
+        if (Array.isArray(d.categories)) {
+          d.categories.forEach(c => {
+            if (c.name) cats.add(c.name);
+          });
+        }
+      });
+      products.forEach(p => {
+        if (p.category) cats.add(p.category);
+      });
     }
 
-    return Array.from(new Set(activeCats))
-      .sort((a, b) => a.localeCompare(b))
-      .map(cat => ({ label: cat, value: cat }));
-  }, [categories, selectedProduct]);
+    Array.from(cats).sort((a, b) => a.localeCompare(b)).forEach(cName => {
+      opts.push({ label: cName, value: cName });
+    });
+    return opts;
+  }, [categories, products, selectedDeptFilter]);
 
+  // 3. Sub Category Filter Options (Cascading - Dependent on Selected Category)
+  const subCategoryFilterOptions = useMemo(() => {
+    const opts = [{ label: 'All Sub Categories', value: 'ALL' }];
+    const subCats = new Set();
+
+    if (selectedCatFilter !== 'ALL') {
+      categories.forEach(d => {
+        if (selectedDeptFilter === 'ALL' || d.name === selectedDeptFilter) {
+          if (Array.isArray(d.categories)) {
+            const catObj = d.categories.find(c => c.name === selectedCatFilter);
+            if (catObj && Array.isArray(catObj.subcategories)) {
+              catObj.subcategories.forEach(s => {
+                const sName = typeof s === 'string' ? s : s.name;
+                if (sName) subCats.add(sName);
+              });
+            }
+          }
+        }
+      });
+      products.forEach(p => {
+        if (p.category === selectedCatFilter && p.subCategory) {
+          subCats.add(p.subCategory);
+        }
+      });
+    } else {
+      categories.forEach(d => {
+        if (selectedDeptFilter === 'ALL' || d.name === selectedDeptFilter) {
+          if (Array.isArray(d.categories)) {
+            d.categories.forEach(c => {
+              if (Array.isArray(c.subcategories)) {
+                c.subcategories.forEach(s => {
+                  const sName = typeof s === 'string' ? s : s.name;
+                  if (sName) subCats.add(sName);
+                });
+              }
+            });
+          }
+        }
+      });
+      products.forEach(p => {
+        if ((selectedDeptFilter === 'ALL' || p.department === selectedDeptFilter) && p.subCategory) {
+          subCats.add(p.subCategory);
+        }
+      });
+    }
+
+    Array.from(subCats).sort((a, b) => a.localeCompare(b)).forEach(sName => {
+      opts.push({ label: sName, value: sName });
+    });
+    return opts;
+  }, [categories, products, selectedDeptFilter, selectedCatFilter]);
+
+  // Cascading Filter Selection Handlers
+  const handleDepartmentFilterChange = (val) => {
+    setSelectedDeptFilter(val);
+    setSelectedCatFilter('ALL');
+    setSelectedSubCatFilter('ALL');
+  };
+
+  const handleCategoryFilterChange = (val) => {
+    setSelectedCatFilter(val);
+    setSelectedSubCatFilter('ALL');
+  };
+
+  const handleSubCategoryFilterChange = (val) => {
+    setSelectedSubCatFilter(val);
+  };
+
+  const handleClearAllFilters = () => {
+    setSelectedDeptFilter('ALL');
+    setSelectedCatFilter('ALL');
+    setSelectedSubCatFilter('ALL');
+    setGlobalSearchQuery('');
+  };
+
+  // Filtered Products Calculation (Global Search + Department + Category + Sub Category)
+  const filteredProducts = useMemo(() => {
+    return products.filter(item => {
+      // Global Search Across: Department, Category, Sub Category, Product Name/Title, SKU
+      if (globalSearchQuery.trim()) {
+        const q = globalSearchQuery.toLowerCase().trim();
+        const matchName = (item.name || item.title || '').toLowerCase().includes(q);
+        const matchSku = (item.sku || (item._id || item.id || '')).toLowerCase().includes(q);
+        const matchDept = (item.department || '').toLowerCase().includes(q);
+        const matchCat = (item.category || '').toLowerCase().includes(q);
+        const matchSub = (item.subCategory || '').toLowerCase().includes(q);
+
+        if (!matchName && !matchSku && !matchDept && !matchCat && !matchSub) {
+          return false;
+        }
+      }
+
+      // 1. Department Filter
+      if (selectedDeptFilter !== 'ALL') {
+        if ((item.department || '').toLowerCase() !== selectedDeptFilter.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 2. Category Filter
+      if (selectedCatFilter !== 'ALL') {
+        if ((item.category || '').toLowerCase() !== selectedCatFilter.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 3. Sub Category Filter
+      if (selectedSubCatFilter !== 'ALL') {
+        if ((item.subCategory || '').toLowerCase() !== selectedSubCatFilter.toLowerCase()) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [products, globalSearchQuery, selectedDeptFilter, selectedCatFilter, selectedSubCatFilter]);
+
+  // Edit 3-Level Dropdown Options (Department -> Category -> Sub Category)
+  const editDepartmentOptions = useMemo(() => {
+    const depts = new Set();
+    categories.forEach(d => {
+      if (d.isEnabled !== false && d.name) depts.add(d.name);
+    });
+    if (editFormData.department) depts.add(editFormData.department);
+    if (selectedProduct && selectedProduct.department) depts.add(selectedProduct.department);
+
+    return Array.from(depts)
+      .sort((a, b) => a.localeCompare(b))
+      .map(d => ({ label: d, value: d }));
+  }, [categories, editFormData.department, selectedProduct]);
+
+  const editCategoryOptions = useMemo(() => {
+    const cats = new Set();
+    const currentDeptName = editFormData.department;
+
+    if (currentDeptName) {
+      const deptObj = categories.find(d => d.name === currentDeptName);
+      if (deptObj && Array.isArray(deptObj.categories)) {
+        deptObj.categories.forEach(c => {
+          if (c.name) cats.add(c.name);
+        });
+      }
+    }
+
+    if (cats.size === 0) {
+      categories.forEach(d => {
+        if (Array.isArray(d.categories)) {
+          d.categories.forEach(c => {
+            if (c.name) cats.add(c.name);
+          });
+        }
+      });
+    }
+
+    if (editFormData.category) cats.add(editFormData.category);
+    if (selectedProduct && selectedProduct.category) cats.add(selectedProduct.category);
+
+    return Array.from(cats)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b))
+      .map(c => ({ label: c, value: c }));
+  }, [categories, editFormData.department, editFormData.category, selectedProduct]);
+
+  const editSubCategoryOptions = useMemo(() => {
+    const currentDeptName = editFormData.department;
+    const currentCatName = editFormData.category;
+    const subCats = new Set();
+
+    if (currentDeptName && currentCatName) {
+      const deptObj = categories.find(d => d.name === currentDeptName);
+      if (deptObj && Array.isArray(deptObj.categories)) {
+        const catObj = deptObj.categories.find(c => c.name === currentCatName);
+        if (catObj && Array.isArray(catObj.subcategories)) {
+          catObj.subcategories.forEach(s => subCats.add(typeof s === 'string' ? s : s.name));
+        }
+      }
+    }
+
+    if (subCats.size === 0 && currentCatName) {
+      categories.forEach(d => {
+        if (Array.isArray(d.categories)) {
+          const cObj = d.categories.find(c => c.name === currentCatName);
+          if (cObj && Array.isArray(cObj.subcategories)) {
+            cObj.subcategories.forEach(s => subCats.add(typeof s === 'string' ? s : s.name));
+          }
+        }
+      });
+    }
+
+    if (editFormData.subCategory) subCats.add(editFormData.subCategory);
+    subCats.add('General');
+
+    return Array.from(subCats)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b))
+      .map(s => ({ label: s, value: s }));
+  }, [categories, editFormData.department, editFormData.category, editFormData.subCategory]);
+
+  const handleEditDepartmentChange = (newDeptName) => {
+    const deptObj = categories.find(d => d.name === newDeptName);
+    const firstCat = deptObj && deptObj.categories && deptObj.categories.length > 0 ? deptObj.categories[0].name : '';
+    const firstSub = deptObj && deptObj.categories && deptObj.categories[0] && deptObj.categories[0].subcategories && deptObj.categories[0].subcategories.length > 0
+      ? (typeof deptObj.categories[0].subcategories[0] === 'string' ? deptObj.categories[0].subcategories[0] : deptObj.categories[0].subcategories[0].name)
+      : 'General';
+
+    setEditFormData(prev => ({
+      ...prev,
+      department: newDeptName,
+      category: firstCat || prev.category,
+      subCategory: firstSub || 'General'
+    }));
+  };
+
+  const handleEditCategoryChange = (newCatName) => {
+    let firstSub = 'General';
+    const deptObj = categories.find(d => d.name === editFormData.department);
+    if (deptObj && Array.isArray(deptObj.categories)) {
+      const catObj = deptObj.categories.find(c => c.name === newCatName);
+      if (catObj && Array.isArray(catObj.subcategories) && catObj.subcategories.length > 0) {
+        firstSub = typeof catObj.subcategories[0] === 'string' ? catObj.subcategories[0] : catObj.subcategories[0].name;
+      }
+    } else {
+      categories.forEach(d => {
+        if (Array.isArray(d.categories)) {
+          const catObj = d.categories.find(c => c.name === newCatName);
+          if (catObj && Array.isArray(catObj.subcategories) && catObj.subcategories.length > 0) {
+            firstSub = typeof catObj.subcategories[0] === 'string' ? catObj.subcategories[0] : catObj.subcategories[0].name;
+          }
+        }
+      });
+    }
+
+    setEditFormData(prev => ({
+      ...prev,
+      category: newCatName,
+      subCategory: firstSub || 'General'
+    }));
+  };
+
+  // Single Delete Execution
   const handleDeleteProduct = async () => {
     if (!selectedProduct) return;
     setDeleteLoading(true);
@@ -143,10 +424,22 @@ const ProductsManagement = () => {
       existingImages.push(DEFAULT_IMAGE_SET[existingImages.length % 3] || '');
     }
 
+    let deptName = product.department || '';
+    if (!deptName && product.category && categories.length > 0) {
+      const parentDept = categories.find(d => 
+        d.categories && d.categories.some(c => c.name === product.category)
+      );
+      if (parentDept) deptName = parentDept.name;
+    }
+    if (!deptName && categories.length > 0) {
+      deptName = categories[0].name || "Women's Fashion";
+    }
+
     setEditFormData({
       name: product.name || '',
       price: product.price !== undefined ? product.price : '',
-      category: product.category || "Women's Couture",
+      department: deptName,
+      category: product.category || '',
       subCategory: product.subCategory || 'General',
       description: product.description || '',
       rating: product.rating || 4.5,
@@ -191,6 +484,7 @@ const ProductsManagement = () => {
       const updatePayload = {
         name: editFormData.name,
         price: parseFloat(editFormData.price) || 0,
+        department: editFormData.department,
         category: editFormData.category,
         subCategory: editFormData.subCategory,
         description: editFormData.description,
@@ -254,12 +548,19 @@ const ProductsManagement = () => {
       sortable: true
     },
     {
-      header: 'Category',
+      header: 'Classification',
       accessor: 'category',
       render: (row) => (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontWeight: '500', color: 'var(--admin-text-primary)' }}>{row.category || "Women's"}</span>
-          <span style={{ fontSize: '11px', color: 'var(--admin-text-secondary)' }}>{row.subCategory || 'Couture'}</span>
+          <span style={{ fontWeight: '600', color: 'var(--admin-gold)', fontSize: '12px' }}>
+            {row.department || "Fashion Department"}
+          </span>
+          <span style={{ fontWeight: '500', color: 'var(--admin-text-primary)', fontSize: '12px' }}>
+            {row.category || "Women's Fashion"}
+          </span>
+          <span style={{ fontSize: '11px', color: 'var(--admin-text-secondary)' }}>
+            {row.subCategory || 'General'}
+          </span>
         </div>
       ),
       sortable: true
@@ -313,28 +614,31 @@ const ProductsManagement = () => {
     }
   ];
 
+  const hasActiveFilters = selectedDeptFilter !== 'ALL' || selectedCatFilter !== 'ALL' || selectedSubCatFilter !== 'ALL' || selectedStockFilter !== 'ALL' || globalSearchQuery.trim() !== '';
+
   return (
     <AdminLayout title="Products Catalog">
+      {/* Top-Right Page Header Action Alignment */}
       <PageHeader
         title="Products Management"
-        subtitle="View, edit, and organize luxury inventory items with 3-image support"
+        subtitle="Manage inventory items with multi-tier department classification & stock status"
         breadcrumbs={[{ label: 'Products' }]}
         actions={
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Button
-              onClick={() => setBulkUploadOpen(true)}
-              variant="secondary"
-              icon={<Upload size={14} />}
-              title="Bulk import products from Excel"
-            >
-              Bulk Upload
-            </Button>
             <Button
               to="/admin/new-product"
               variant="primary"
               icon={<Plus size={15} />}
             >
-              Add New Product
+              Add Product
+            </Button>
+            <Button
+              onClick={() => setBulkUploadOpen(true)}
+              variant="secondary"
+              icon={<Upload size={14} />}
+              title="Bulk import products from Excel or CSV"
+            >
+              Bulk Upload
             </Button>
           </div>
         }
@@ -347,34 +651,90 @@ const ProductsManagement = () => {
         </div>
       )}
 
-      {/* Main Products Table */}
+      {/* Main Products Table with Integrated Toolbar (Search + Department + Category + Sub Category) */}
       <DataTable
         columns={columns}
-        data={products.map(p => ({
+        data={filteredProducts.map(p => ({
           ...p,
           stockStatus: (p.stock || 0) === 0 ? 'out_of_stock' : (p.stock || 0) < 5 ? 'low_stock' : 'in_stock'
         }))}
         loading={loading}
         onRowClick={(row) => navigate(`/admin/products/${row._id || row.id}`)}
-        searchPlaceholder="Search products by name, SKU, or category..."
-        filterKey="category"
-        filterLabel="All Categories"
-        filterOptions={catalogFilterOptions}
-        secondaryFilterKey="stockStatus"
-        secondaryFilterLabel="All Status"
-        secondaryFilterOptions={[
-          { label: 'All Status', value: 'ALL' },
-          { label: 'In Stock', value: 'in_stock' },
-          { label: 'Low Stock', value: 'low_stock' },
-          { label: 'Out of Stock', value: 'out_of_stock' }
-        ]}
+        searchPlaceholder="Search products by Department, Category, Sub Category, Title..."
+        externalSearchQuery={globalSearchQuery}
+        onSearchChange={(e) => setGlobalSearchQuery(e.target.value)}
+        customFilters={
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
+            {/* 1. Department Filter */}
+            <FilterDropdown
+              label="Department"
+              options={departmentFilterOptions}
+              value={selectedDeptFilter}
+              onChange={handleDepartmentFilterChange}
+              placeholder="All Departments"
+              width="180px"
+            />
+
+            {/* 2. Category Filter (Cascading Dependent Dropdown) */}
+            <FilterDropdown
+              label="Category"
+              options={categoryFilterOptions}
+              value={selectedCatFilter}
+              onChange={handleCategoryFilterChange}
+              placeholder="All Categories"
+              width="180px"
+            />
+
+            {/* 3. Sub Category Filter (Cascading Dependent Dropdown) */}
+            <FilterDropdown
+              label="Sub Category"
+              options={subCategoryFilterOptions}
+              value={selectedSubCatFilter}
+              onChange={handleSubCategoryFilterChange}
+              placeholder="All Sub Categories"
+              width="180px"
+            />
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleClearAllFilters}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '9px 14px',
+                  backgroundColor: 'rgba(212, 175, 55, 0.08)',
+                  border: '1px solid var(--admin-border-gold)',
+                  borderRadius: '20px',
+                  color: 'var(--admin-gold)',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap',
+                  boxShadow: 'var(--admin-shadow-sm)',
+                  height: '38px',
+                  boxSizing: 'border-box'
+                }}
+                title="Clear search query and reset catalog filters"
+              >
+                <RotateCcw size={13} />
+                Reset Filters
+              </button>
+            )}
+          </div>
+        }
         emptyTitle="No Products Found"
-        emptyDescription="Start adding luxury fashion products to populate your store catalog."
-        onEmptyAction={() => navigate('/admin/new-product')}
-        emptyActionLabel="+ Add First Product"
+        emptyDescription={hasActiveFilters ? "No products match the selected cascading filters or search query." : "Start adding luxury fashion products to populate your store catalog."}
+        onEmptyAction={() => {
+          if (hasActiveFilters) handleClearAllFilters();
+          else navigate('/admin/new-product');
+        }}
+        emptyActionLabel={hasActiveFilters ? "Reset Filters" : "+ Add First Product"}
       />
 
-      {/* Delete Confirmation Modal */}
+      {/* Single Delete Confirmation Modal */}
       <ConfirmationModal
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
@@ -397,12 +757,12 @@ const ProductsManagement = () => {
         existingProducts={products}
       />
 
-      {/* Full 3-Image Product Edit Form Modal */}
+      {/* Product Edit Modal */}
       {editModalOpen && (
         <div style={styles.modalOverlay} onClick={() => setEditModalOpen(false)}>
           <div style={{ ...styles.modalContent, maxWidth: '850px' }} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
-              <h3 style={styles.modalTitle}>Edit Product & Image Gallery</h3>
+              <h3 style={styles.modalTitle}>Edit Product Specifications</h3>
               <button onClick={() => setEditModalOpen(false)} style={styles.modalClose}>×</button>
             </div>
 
@@ -413,32 +773,45 @@ const ProductsManagement = () => {
                   type="text"
                   value={editFormData.name}
                   onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  maxLength={100}
                   required
                   style={styles.input}
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
                 <div style={styles.inputGroup}>
-                  {/* Category Dropdown with Active Categories + Preserved Disabled Category */}
                   <SelectDropdown
-                    label="Category"
-                    placeholder="Select Category"
-                    options={editCategoryOptions}
-                    value={editFormData.category}
-                    onChange={(val) => setEditFormData({ ...editFormData, category: val })}
+                    label="Department"
+                    placeholder="Select Department"
+                    options={editDepartmentOptions}
+                    value={editFormData.department}
+                    onChange={(val) => handleEditDepartmentChange(val)}
                     required={true}
                     searchable={true}
                   />
                 </div>
 
                 <div style={styles.inputGroup}>
-                  <label style={styles.label}>Sub Category</label>
-                  <input
-                    type="text"
+                  <SelectDropdown
+                    label="Category"
+                    placeholder="Select Category"
+                    options={editCategoryOptions}
+                    value={editFormData.category}
+                    onChange={(val) => handleEditCategoryChange(val)}
+                    required={true}
+                    searchable={true}
+                  />
+                </div>
+
+                <div style={styles.inputGroup}>
+                  <SelectDropdown
+                    label="Sub Category"
+                    placeholder="Select Sub Category"
+                    options={editSubCategoryOptions}
                     value={editFormData.subCategory}
-                    onChange={(e) => setEditFormData({ ...editFormData, subCategory: e.target.value })}
-                    style={styles.input}
+                    onChange={(val) => setEditFormData({ ...editFormData, subCategory: val })}
+                    searchable={true}
                   />
                 </div>
               </div>
@@ -492,7 +865,7 @@ const ProductsManagement = () => {
                 />
               </div>
 
-              {/* 3 Images Minimum Gallery Controls */}
+              {/* Gallery Controls */}
               <div style={{ marginTop: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <label style={styles.label}>Product Gallery (3 Images Minimum)</label>
@@ -592,22 +965,7 @@ const styles = {
     cursor: 'pointer',
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '6px',
-    transition: 'all 0.2s ease'
-  },
-  goldOutlineBtn: {
-    padding: '9px 16px',
-    backgroundColor: 'rgba(212, 175, 55, 0.08)',
-    border: '1px solid rgba(212, 175, 55, 0.35)',
-    color: '#D4AF37',
-    borderRadius: '24px',
-    fontSize: '12px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px',
-    transition: 'all 0.2s ease'
+    gap: '6px'
   },
   smallAddBtn: {
     padding: '4px 10px',
@@ -637,6 +995,46 @@ const styles = {
     color: '#10B981',
     fontSize: '18px',
     cursor: 'pointer'
+  },
+  filterToolbarCard: {
+    backgroundColor: 'var(--admin-card-bg)',
+    border: '1px solid var(--admin-border-gold)',
+    borderRadius: '16px',
+    padding: '18px 20px',
+    marginBottom: '20px',
+    boxShadow: 'var(--admin-shadow-sm)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px'
+  },
+  filterToolbarHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: '10px'
+  },
+  filterToolbarTitle: {
+    fontSize: '12px',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+    color: 'var(--admin-text-primary)'
+  },
+  clearFiltersBtn: {
+    background: 'none',
+    border: 'none',
+    color: 'var(--admin-gold)',
+    fontSize: '12px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    textDecoration: 'underline'
+  },
+  filterGrid: {
+    display: 'flex',
+    alignItems: 'flex-end',
+    flexWrap: 'wrap',
+    gap: '14px'
   },
   modalOverlay: {
     position: 'fixed',
@@ -755,153 +1153,6 @@ const styles = {
     marginTop: '16px',
     paddingTop: '12px',
     borderTop: '1px solid var(--admin-border-subtle)'
-  },
-  // View Product Drawer Styles
-  viewMediaContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px'
-  },
-  viewHeroWrapper: {
-    position: 'relative',
-    width: '100%',
-    height: '240px',
-    borderRadius: '12px',
-    overflow: 'hidden',
-    border: '1px solid var(--admin-border-gold)',
-    backgroundColor: 'var(--admin-surface-2)'
-  },
-  viewHeroImage: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover'
-  },
-  heroOverlayBadge: {
-    position: 'absolute',
-    bottom: '10px',
-    right: '10px',
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    border: '1px solid var(--admin-border-gold)',
-    borderRadius: '20px',
-    padding: '4px 10px',
-    fontSize: '11px',
-    color: 'var(--admin-gold)',
-    fontWeight: '600'
-  },
-  viewThumbGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '10px'
-  },
-  viewThumbWrapper: {
-    height: '70px',
-    borderRadius: '8px',
-    overflow: 'hidden',
-    border: '2px solid transparent',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    backgroundColor: 'var(--admin-surface-2)'
-  },
-  viewThumbImg: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover'
-  },
-  viewCardBox: {
-    backgroundColor: 'var(--admin-surface-2)',
-    padding: '18px',
-    borderRadius: '12px',
-    border: '1px solid var(--admin-border-subtle)',
-    display: 'flex',
-    flexDirection: 'column'
-  },
-  categoryBadge: {
-    fontSize: '11px',
-    color: 'var(--admin-gold)',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: '0.8px',
-    backgroundColor: 'var(--admin-gold-muted)',
-    padding: '4px 10px',
-    borderRadius: '14px',
-    border: '1px solid var(--admin-border-gold)'
-  },
-  subCategoryBadge: {
-    fontSize: '11px',
-    color: 'var(--admin-text-secondary)',
-    fontWeight: '600',
-    backgroundColor: 'var(--admin-input-bg)',
-    padding: '4px 10px',
-    borderRadius: '14px'
-  },
-  viewTitle: {
-    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
-    fontSize: '22px',
-    fontWeight: '700',
-    color: 'var(--admin-text-primary)',
-    margin: '0 0 10px 0'
-  },
-  viewDescription: {
-    fontSize: '13px',
-    color: 'var(--admin-text-secondary)',
-    lineHeight: '1.6',
-    margin: 0
-  },
-  cardHeaderTitle: {
-    fontSize: '11px',
-    fontWeight: '700',
-    color: 'var(--admin-gold)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.8px',
-    marginBottom: '6px'
-  },
-  metaLabel: {
-    fontSize: '11px',
-    color: 'var(--admin-text-secondary)',
-    display: 'block'
-  },
-  priceGold: {
-    fontFamily: "var(--font-serif, 'Playfair Display', serif)",
-    fontSize: '24px',
-    color: 'var(--admin-gold)',
-    fontWeight: '700'
-  },
-  origPriceStrikethrough: {
-    fontSize: '14px',
-    color: 'var(--admin-text-muted)',
-    textDecoration: 'line-through'
-  },
-  discountPill: {
-    fontSize: '11px',
-    fontWeight: '700',
-    color: 'var(--admin-success)',
-    backgroundColor: 'var(--admin-success-bg)',
-    padding: '3px 8px',
-    borderRadius: '10px',
-    border: '1px solid var(--admin-success)'
-  },
-  taxBadge: {
-    fontSize: '11px',
-    color: 'var(--admin-text-muted)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px'
-  },
-  specValue: {
-    fontSize: '15px',
-    fontWeight: '600',
-    color: 'var(--admin-text-primary)',
-    display: 'block',
-    marginTop: '4px'
-  },
-  viewMetadataBox: {
-    backgroundColor: 'var(--admin-input-bg)',
-    border: '1px solid var(--admin-border-subtle)',
-    borderRadius: '10px',
-    padding: '12px 16px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center'
   }
 };
 

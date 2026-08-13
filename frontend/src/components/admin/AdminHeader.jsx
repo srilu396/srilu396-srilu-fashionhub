@@ -144,9 +144,17 @@ const AdminHeader = ({ onMobileToggle, title }) => {
         />
 
         {/* Profile Avatar */}
-        <Link to="/admin/profile" style={styles.profileBtn}>
+        <Link to="/admin/profile" style={styles.profileBtn} title="View Admin Profile">
           <div style={styles.headerAvatar}>
-            {(adminUser?.firstName || 'A').charAt(0).toUpperCase()}
+            {adminUser?.avatarUrl ? (
+              <img
+                src={adminUser.avatarUrl}
+                alt={adminUser.firstName || 'Admin'}
+                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+              />
+            ) : (
+              (adminUser?.firstName || 'A').charAt(0).toUpperCase()
+            )}
           </div>
         </Link>
       </div>

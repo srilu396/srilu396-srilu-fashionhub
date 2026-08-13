@@ -89,9 +89,9 @@ const styles = {
   },
   headingRow: {
     display: 'flex',
-    alignItems: 'baseline',
-    gap: '14px',
-    flexWrap: 'wrap'
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: '4px'
   },
   heading: {
     fontFamily: "var(--font-serif, 'Playfair Display', serif)",
@@ -110,7 +110,9 @@ const styles = {
   actionGroup: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px'
+    gap: '10px',
+    flexWrap: 'wrap',
+    marginLeft: 'auto'
   }
 };
 

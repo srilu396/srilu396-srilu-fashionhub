@@ -84,7 +84,9 @@ const AdminProductDetails = () => {
   const fetchCategories = async () => {
     try {
       const data = await categoryAPI.getAll();
-      if (data.success && Array.isArray(data.categories)) {
+      if (data.success && Array.isArray(data.departments)) {
+        setCategories(data.departments);
+      } else if (data.success && Array.isArray(data.categories)) {
         setCategories(data.categories);
       }
     } catch (err) {
@@ -115,20 +117,129 @@ const AdminProductDetails = () => {
   const savings = origPrice > sellPrice ? origPrice - sellPrice : 0;
   const discountPct = origPrice > sellPrice ? Math.round(((origPrice - sellPrice) / origPrice) * 100) : 0;
 
-  // Category options for edit modal
-  const editCategoryOptions = React.useMemo(() => {
-    const activeCats = categories
-      .filter(c => c.isEnabled !== false)
-      .map(c => c.name);
+  // 1. Department options
+  const editDepartmentOptions = React.useMemo(() => {
+    const depts = new Set();
+    categories.forEach(d => {
+      if (d.isEnabled !== false && d.name) depts.add(d.name);
+    });
+    if (editFormData.department) depts.add(editFormData.department);
+    if (product && product.department) depts.add(product.department);
 
-    if (product && product.category && !activeCats.includes(product.category)) {
-      activeCats.push(product.category);
+    return Array.from(depts)
+      .sort((a, b) => a.localeCompare(b))
+      .map(d => ({ label: d, value: d }));
+  }, [categories, editFormData.department, product]);
+
+  // 2. Category options (filtered by editFormData.department)
+  const editCategoryOptions = React.useMemo(() => {
+    const cats = new Set();
+    const currentDeptName = editFormData.department;
+
+    if (currentDeptName) {
+      const deptObj = categories.find(d => d.name === currentDeptName);
+      if (deptObj && Array.isArray(deptObj.categories)) {
+        deptObj.categories.forEach(c => {
+          if (c.name) cats.add(c.name);
+        });
+      }
     }
 
-    return Array.from(new Set(activeCats))
+    if (cats.size === 0) {
+      categories.forEach(d => {
+        if (Array.isArray(d.categories)) {
+          d.categories.forEach(c => {
+            if (c.name) cats.add(c.name);
+          });
+        }
+      });
+    }
+
+    if (editFormData.category) cats.add(editFormData.category);
+    if (product && product.category) cats.add(product.category);
+
+    return Array.from(cats)
+      .filter(Boolean)
       .sort((a, b) => a.localeCompare(b))
-      .map(cat => ({ label: cat, value: cat }));
-  }, [categories, product]);
+      .map(c => ({ label: c, value: c }));
+  }, [categories, editFormData.department, editFormData.category, product]);
+
+  // 3. Sub Category options (filtered by editFormData.department & editFormData.category)
+  const editSubCategoryOptions = React.useMemo(() => {
+    const currentDeptName = editFormData.department;
+    const currentCatName = editFormData.category;
+    const subCats = new Set();
+
+    if (currentDeptName && currentCatName) {
+      const deptObj = categories.find(d => d.name === currentDeptName);
+      if (deptObj && Array.isArray(deptObj.categories)) {
+        const catObj = deptObj.categories.find(c => c.name === currentCatName);
+        if (catObj && Array.isArray(catObj.subcategories)) {
+          catObj.subcategories.forEach(s => subCats.add(typeof s === 'string' ? s : s.name));
+        }
+      }
+    }
+
+    if (subCats.size === 0 && currentCatName) {
+      categories.forEach(d => {
+        if (Array.isArray(d.categories)) {
+          const cObj = d.categories.find(c => c.name === currentCatName);
+          if (cObj && Array.isArray(cObj.subcategories)) {
+            cObj.subcategories.forEach(s => subCats.add(typeof s === 'string' ? s : s.name));
+          }
+        }
+      });
+    }
+
+    if (editFormData.subCategory) subCats.add(editFormData.subCategory);
+    subCats.add('General');
+
+    return Array.from(subCats)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b))
+      .map(s => ({ label: s, value: s }));
+  }, [categories, editFormData.department, editFormData.category, editFormData.subCategory]);
+
+  const handleEditDepartmentChange = (newDeptName) => {
+    const deptObj = categories.find(d => d.name === newDeptName);
+    const firstCat = deptObj && deptObj.categories && deptObj.categories.length > 0 ? deptObj.categories[0].name : '';
+    const firstSub = deptObj && deptObj.categories && deptObj.categories[0] && deptObj.categories[0].subcategories && deptObj.categories[0].subcategories.length > 0
+      ? (typeof deptObj.categories[0].subcategories[0] === 'string' ? deptObj.categories[0].subcategories[0] : deptObj.categories[0].subcategories[0].name)
+      : 'General';
+
+    setEditFormData(prev => ({
+      ...prev,
+      department: newDeptName,
+      category: firstCat || prev.category,
+      subCategory: firstSub || 'General'
+    }));
+  };
+
+  const handleEditCategoryChange = (newCatName) => {
+    let firstSub = 'General';
+    const deptObj = categories.find(d => d.name === editFormData.department);
+    if (deptObj && Array.isArray(deptObj.categories)) {
+      const catObj = deptObj.categories.find(c => c.name === newCatName);
+      if (catObj && Array.isArray(catObj.subcategories) && catObj.subcategories.length > 0) {
+        firstSub = typeof catObj.subcategories[0] === 'string' ? catObj.subcategories[0] : catObj.subcategories[0].name;
+      }
+    } else {
+      categories.forEach(d => {
+        if (Array.isArray(d.categories)) {
+          const catObj = d.categories.find(c => c.name === newCatName);
+          if (catObj && Array.isArray(catObj.subcategories) && catObj.subcategories.length > 0) {
+            firstSub = typeof catObj.subcategories[0] === 'string' ? catObj.subcategories[0] : catObj.subcategories[0].name;
+          }
+        }
+      });
+    }
+
+    setEditFormData(prev => ({
+      ...prev,
+      category: newCatName,
+      subCategory: firstSub || 'General'
+    }));
+  };
 
   const openEditModal = () => {
     if (!product) return;
@@ -142,10 +253,22 @@ const AdminProductDetails = () => {
       prodImages.push(DEFAULT_IMAGE_SET[prodImages.length % 3]);
     }
 
+    let deptName = product.department || '';
+    if (!deptName && product.category && categories.length > 0) {
+      const parentDept = categories.find(d => 
+        d.categories && d.categories.some(c => c.name === product.category)
+      );
+      if (parentDept) deptName = parentDept.name;
+    }
+    if (!deptName && categories.length > 0) {
+      deptName = categories[0].name || "Women's Fashion";
+    }
+
     setEditFormData({
       name: product.name || '',
       price: product.price || 0,
-      category: product.category || "Women's Couture",
+      department: deptName,
+      category: product.category || '',
       subCategory: product.subCategory || 'General',
       description: product.description || '',
       rating: product.rating || 4.5,
@@ -171,6 +294,7 @@ const AdminProductDetails = () => {
       const updatePayload = {
         name: editFormData.name,
         price: parseFloat(editFormData.price) || 0,
+        department: editFormData.department,
         category: editFormData.category,
         subCategory: editFormData.subCategory,
         description: editFormData.description,
@@ -322,8 +446,11 @@ const AdminProductDetails = () => {
             {/* Header Badge Card */}
             <div style={styles.detailCard}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span style={styles.categoryBadge}>{product.category || "Women's Couture"}</span>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  {product.department && (
+                    <span style={styles.departmentBadge}>{product.department}</span>
+                  )}
+                  <span style={styles.categoryBadge}>{product.category || "Women's Fashion"}</span>
                   {product.subCategory && (
                     <span style={styles.subCategoryBadge}>{product.subCategory}</span>
                   )}
@@ -417,14 +544,6 @@ const AdminProductDetails = () => {
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
-                {/* Brand */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={styles.metaLabel}>Brand:</span>
-                  <span style={{ fontSize: '13px', color: 'var(--admin-text-primary)', fontWeight: '600' }}>
-                    {product.brand || 'Srilu Couture'}
-                  </span>
-                </div>
-
                 {/* Tags */}
                 {Array.isArray(product.tags) && product.tags.length > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -519,31 +638,45 @@ const AdminProductDetails = () => {
                   type="text"
                   value={editFormData.name}
                   onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  maxLength={100}
                   required
                   style={styles.input}
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
                 <div style={styles.inputGroup}>
                   <SelectDropdown
-                    label="Category"
-                    placeholder="Select Category"
-                    options={editCategoryOptions}
-                    value={editFormData.category}
-                    onChange={(val) => setEditFormData({ ...editFormData, category: val })}
+                    label="Department"
+                    placeholder="Select Department"
+                    options={editDepartmentOptions}
+                    value={editFormData.department}
+                    onChange={(val) => handleEditDepartmentChange(val)}
                     required={true}
                     searchable={true}
                   />
                 </div>
 
                 <div style={styles.inputGroup}>
-                  <label style={styles.label}>Sub Category</label>
-                  <input
-                    type="text"
+                  <SelectDropdown
+                    label="Category"
+                    placeholder="Select Category"
+                    options={editCategoryOptions}
+                    value={editFormData.category}
+                    onChange={(val) => handleEditCategoryChange(val)}
+                    required={true}
+                    searchable={true}
+                  />
+                </div>
+
+                <div style={styles.inputGroup}>
+                  <SelectDropdown
+                    label="Sub Category"
+                    placeholder="Select Sub Category"
+                    options={editSubCategoryOptions}
                     value={editFormData.subCategory}
-                    onChange={(e) => setEditFormData({ ...editFormData, subCategory: e.target.value })}
-                    style={styles.input}
+                    onChange={(val) => setEditFormData({ ...editFormData, subCategory: val })}
+                    searchable={true}
                   />
                 </div>
               </div>
@@ -810,6 +943,16 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     boxShadow: 'var(--admin-shadow-sm)'
+  },
+  departmentBadge: {
+    fontSize: '11px',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+    color: '#0D0D10',
+    backgroundColor: 'var(--admin-gold)',
+    padding: '4px 10px',
+    borderRadius: '12px'
   },
   categoryBadge: {
     fontSize: '11px',

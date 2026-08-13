@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 import AnimatedBackground from '../../components/AnimatedBackground';
-import LoadingSpinner from '../../components/LoadingSpinner';
 import { useToast } from '../../components/common/Toast/useToast';
 import { Tag, Percent, Calendar, Copy, Clock, Filter, Search, ChevronRight, Gift } from 'lucide-react';
 
@@ -245,7 +244,6 @@ const UserCoupons = () => {
         <AnimatedBackground />
         <Header />
         <div className="loading-container">
-          <LoadingSpinner />
           <p>Loading coupons...</p>
         </div>
       </div>

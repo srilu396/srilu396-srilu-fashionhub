@@ -33,7 +33,7 @@ const Header = () => {
 
   const navLinks = [
     { to: '/', label: 'Home' },
-    { to: '/#collections', label: 'Shop', badge: 'Hot' },
+    { to: '/shop', label: 'Shop', badge: 'Hot' },
     { to: '/#about-us', label: 'About Us' },
   ];
 

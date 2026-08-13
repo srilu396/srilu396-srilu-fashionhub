@@ -27,6 +27,20 @@ const productSchema = new mongoose.Schema({
     min: 0,
     max: 100
   },
+  departmentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Department'
+  },
+  categoryId: {
+    type: mongoose.Schema.Types.ObjectId
+  },
+  subcategoryId: {
+    type: mongoose.Schema.Types.ObjectId
+  },
+  department: {
+    type: String,
+    default: ''
+  },
   category: {
     type: String,
     required: [true, 'Product category is required']
@@ -67,6 +81,20 @@ const productSchema = new mongoose.Schema({
     min: 0,
     max: 5
   },
+  numReviews: {
+    type: Number,
+    default: 0
+  },
+  reviews: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    userName: { type: String, default: 'Customer' },
+    userAvatar: { type: String, default: '' },
+    rating: { type: Number, required: true, min: 1, max: 5 },
+    comment: { type: String, default: '' },
+    images: [{ type: String }],
+    videos: [{ type: String }],
+    createdAt: { type: Date, default: Date.now }
+  }],
   isNew: {  // ADDED: New product flag
     type: Boolean,
     default: true

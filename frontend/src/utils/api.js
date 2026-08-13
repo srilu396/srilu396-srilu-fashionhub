@@ -60,6 +60,19 @@ export const productAPI = {
     }
   },
 
+  getFiltered: async (params = {}) => {
+    try {
+      const queryString = new URLSearchParams(
+        Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+      ).toString();
+      const url = `${API_BASE}/products${queryString ? `?${queryString}` : ''}`;
+      return await fetchOptimized(url);
+    } catch (error) {
+      console.error('❌ GET Filtered Products Error:', error);
+      throw error;
+    }
+  },
+
   create: async (productData) => {
     try {
       console.log('🛠️ Creating Product - Data being sent:', productData);
@@ -123,12 +136,52 @@ export const productAPI = {
     }
   },
 
+  bulkDelete: async (productIds) => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_BASE}/products/bulk`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ productIds })
+      });
+      return response.json();
+    } catch (error) {
+      console.error('❌ Bulk Delete Error:', error);
+      throw error;
+    }
+  },
+
   getById: async (id) => {
     try {
       const response = await fetch(`${API_BASE}/products/${id}`);
       return response.json();
     } catch (error) {
       console.error('❌ Get By ID Error:', error);
+      throw error;
+    }
+  },
+
+  globalSearch: async (query) => {
+    try {
+      if (!query || !query.trim()) {
+        return { success: true, results: { departments: [], categories: [], subcategories: [], products: [] } };
+      }
+      return await fetchOptimized(`${API_BASE}/products/search-global?q=${encodeURIComponent(query.trim())}`);
+    } catch (error) {
+      console.error('❌ Global Search Error:', error);
+      throw error;
+    }
+  },
+
+  getRelated: async (id) => {
+    try {
+      if (!id) return { success: true, products: [] };
+      return await fetchOptimized(`${API_BASE}/products/${id}/related`);
+    } catch (error) {
+      console.error('❌ Get Related Products Error:', error);
       throw error;
     }
   }
@@ -692,31 +745,16 @@ export const categoryAPI = {
       }
     });
     return res.json();
-  }
-};
-
-// ===== VIP SUBSCRIBERS API =====
-export const vipAPI = {
-  subscribe: async (email) => {
-    const res = await fetch(`${API_BASE}/vip/subscribe`, {
+  },
+  bulkImport: async (items) => {
+    const token = localStorage.getItem('adminToken');
+    const res = await fetch(`${API_BASE}/categories/bulk-import`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
-    });
-    return res.json();
-  },
-  getAll: async (search = '', status = '') => {
-    const token = localStorage.getItem('adminToken');
-    const res = await fetch(`${API_BASE}/vip?search=${encodeURIComponent(search)}&status=${encodeURIComponent(status)}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    return res.json();
-  },
-  delete: async (id) => {
-    const token = localStorage.getItem('adminToken');
-    const res = await fetch(`${API_BASE}/vip/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ items })
     });
     return res.json();
   }
@@ -724,8 +762,8 @@ export const vipAPI = {
 
 // ===== LIVE CHAT API =====
 export const chatAPI = {
-  getMessages: async (customerId) => {
-    const res = await fetch(`${API_BASE}/chat/messages/${customerId}`);
+  getMessages: async (customerId, viewer = 'admin') => {
+    const res = await fetch(`${API_BASE}/chat/messages/${customerId}?viewer=${viewer}`);
     return res.json();
   },
   sendMessage: async (data) => {
@@ -733,6 +771,14 @@ export const chatAPI = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+  clearChat: async (customerId, requester = 'admin') => {
+    const res = await fetch(`${API_BASE}/chat/clear/${customerId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requester })
     });
     return res.json();
   },
@@ -745,6 +791,54 @@ export const chatAPI = {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reader })
+    });
+    return res.json();
+  }
+};
+
+// ===== INTERNAL ADMIN CHAT API =====
+export const internalChatAPI = {
+  // Fetch bi-directional messages between two admins
+  getMessages: async (senderId, recipientId) => {
+    const token = localStorage.getItem('adminToken');
+    const res = await fetch(`${API_BASE}/chat/internal/${senderId}/${recipientId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    return res.json();
+  },
+
+  // Send internal message from one admin to another
+  sendMessage: async ({ senderId, recipientId, senderName, message }) => {
+    const token = localStorage.getItem('adminToken');
+    const res = await fetch(`${API_BASE}/chat/internal/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ senderId, recipientId, senderName, message })
+    });
+    return res.json();
+  },
+
+  // Mark messages from senderId to recipientId as read
+  markRead: async (senderId, recipientId) => {
+    const token = localStorage.getItem('adminToken');
+    const res = await fetch(`${API_BASE}/chat/internal/read/${senderId}/${recipientId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    });
+    return res.json();
+  },
+
+  // Get count of unread internal messages for a recipient admin
+  getUnread: async (recipientId) => {
+    const token = localStorage.getItem('adminToken');
+    const res = await fetch(`${API_BASE}/chat/internal/unread/${recipientId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
     });
     return res.json();
   }
@@ -780,6 +874,41 @@ export const notificationAPI = {
     const res = await fetch(`${API_BASE}/notifications/${id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return res.json();
+  }
+};
+
+// ===== USER PROFILE & SECURITY API =====
+export const userAPI = {
+  getProfile: async () => {
+    const token = localStorage.getItem('adminToken') || localStorage.getItem('userToken');
+    const res = await fetch(`${API_BASE}/users/profile`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return res.json();
+  },
+  updateProfile: async (profileData) => {
+    const token = localStorage.getItem('adminToken') || localStorage.getItem('userToken');
+    const res = await fetch(`${API_BASE}/users/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(profileData)
+    });
+    return res.json();
+  },
+  changePassword: async (currentPassword, newPassword) => {
+    const token = localStorage.getItem('adminToken') || localStorage.getItem('userToken');
+    const res = await fetch(`${API_BASE}/users/change-password`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ currentPassword, newPassword })
     });
     return res.json();
   }

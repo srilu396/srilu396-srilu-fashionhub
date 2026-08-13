@@ -22,11 +22,9 @@ import {
   Instagram,
   Facebook,
   Compass,
-  Crown,
   Clock,
   Check
 } from 'lucide-react';
-import { vipAPI } from '../utils/api';
 import { useToast } from '../components/common/Toast/useToast';
 import './LandingPage.css';
 
@@ -157,8 +155,8 @@ const LandingPage = () => {
   // Newsletter State
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
-  const [vipSuccessModalOpen, setVipSuccessModalOpen] = useState(false);
-  const [vipSubmitting, setVipSubmitting] = useState(false);
+  const [priveSuccessModalOpen, setPriveSuccessModalOpen] = useState(false);
+  const [priveSubmitting, setPriveSubmitting] = useState(false);
 
   // Auto Hero Slider, Exhibition Auto-Slide & Scroll Listener
   useEffect(() => {
@@ -285,34 +283,38 @@ const LandingPage = () => {
       return;
     }
 
-    setVipSubmitting(true);
+    setPriveSubmitting(true);
     try {
-      const res = await vipAPI.subscribe(trimmedEmail);
-      if (res.alreadySubscribed) {
-        localStorage.setItem('isVipSubscriber', 'true');
-        localStorage.setItem('vipEmail', trimmedEmail);
-        toast.info('This email is already a distinguished member of Club Privé.', 'Already Subscribed');
-        setNewsletterError('This email is already a distinguished member of Club Privé.');
-      } else if (res.success) {
-        localStorage.setItem('isVipSubscriber', 'true');
-        localStorage.setItem('vipEmail', trimmedEmail);
-        toast.success('Welcome to the SRILU private circle.', 'VIP Subscription Confirmed');
+      const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+      const res = await fetch(`${API_BASE}/api/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Private Circle Subscriber',
+          email: trimmedEmail,
+          subject: 'Club Privé Newsletter Subscription',
+          message: `Subscriber requested entry into Club Privé newsletter list: ${trimmedEmail}`
+        })
+      });
+      const result = await res.json();
+      if (result.success || res.ok) {
+        toast.success('Welcome to the SRILU private circle.', 'Subscription Confirmed');
         setNewsletterSubscribed(true);
-        setVipSuccessModalOpen(true);
+        setPriveSuccessModalOpen(true);
         setNewsletterEmail('');
         setTimeout(() => {
           setNewsletterSubscribed(false);
         }, 3500);
       } else {
-        toast.error(res.message || 'Subscription failed. Please try again.');
-        setNewsletterError(res.message || 'Subscription failed. Please try again.');
+        toast.error(result.message || 'Subscription failed. Please try again.');
+        setNewsletterError(result.message || 'Subscription failed. Please try again.');
       }
     } catch (err) {
-      console.error('VIP Subscription Error:', err);
+      console.error('Subscription Error:', err);
       toast.error('Network error. Please try again.');
       setNewsletterError('Network error. Please try again.');
     } finally {
-      setVipSubmitting(false);
+      setPriveSubmitting(false);
     }
   };
 
@@ -410,7 +412,7 @@ const LandingPage = () => {
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="hero-badge">
+              <div className="landing-hero-badge">
                 <Sparkles size={14} className="badge-icon" />
                 <span>{HERO_SLIDES[currentSlide].category}</span>
               </div>
@@ -737,7 +739,7 @@ const LandingPage = () => {
                 <span>Explore Gala Lookbook</span>
               </button>
               <button className="btn-editorial-glass" onClick={handleSignUpClick}>
-                <span>Join VIP Atelier</span>
+                <span>Join Private Atelier</span>
               </button>
             </div>
           </div>
@@ -846,14 +848,14 @@ const LandingPage = () => {
           {/* Right: Newsletter Privé Invitation */}
           <div className="newsletter-card">
             <div className="newsletter-badge">CLUB PRIVÉ</div>
-            <h3 className="newsletter-title">Join The Private VIP Circle</h3>
+            <h3 className="newsletter-title">Join The Private Circle</h3>
             <p className="newsletter-text">
               Subscribe to receive exclusive invitations to private runway debuts, early collection access, and bespoke seasonal lookbooks.
             </p>
 
             <form className="newsletter-form" onSubmit={handleNewsletterSubmit}>
-              {/* Unified Luxury Subscription Control */}
-              <div className="vip-unified-control">
+              {/* Unified single-bordered input pill */}
+              <div className="vip-unified-control-pill">
                 <Mail className="mail-icon" size={18} />
                 <input 
                   type="email" 
@@ -861,24 +863,24 @@ const LandingPage = () => {
                   value={newsletterEmail}
                   onChange={(e) => { 
                     setNewsletterEmail(e.target.value); 
-                    setNewsletterError(''); 
+                    setNewsletterError('');
                     if (newsletterSubscribed) setNewsletterSubscribed(false);
                   }}
-                  disabled={vipSubmitting}
+                  disabled={priveSubmitting}
                   autoComplete="email"
                 />
                 <button 
                   type="submit" 
-                  className={`btn-vip-subscribe ${vipSubmitting ? 'loading' : ''} ${newsletterSubscribed ? 'success' : ''}`}
-                  disabled={vipSubmitting}
+                  className={`btn-vip-subscribe-pill ${priveSubmitting ? 'loading' : ''} ${newsletterSubscribed ? 'success' : ''}`}
+                  disabled={priveSubmitting}
                 >
-                  <span>{vipSubmitting ? 'Subscribing' : newsletterSubscribed ? 'Subscribed' : 'Subscribe'}</span>
-                  {vipSubmitting ? (
+                  <span>{priveSubmitting ? 'Subscribing' : newsletterSubscribed ? 'Subscribed' : 'Subscribe'}</span>
+                  {priveSubmitting ? (
                     <span className="vip-loading-dot" />
                   ) : newsletterSubscribed ? (
-                    <Check size={16} />
+                    <Check size={14} />
                   ) : (
-                    <ArrowRight size={16} />
+                    <ArrowRight size={14} />
                   )}
                 </button>
               </div>
@@ -903,6 +905,15 @@ const LandingPage = () => {
                 <span>Pitapuram, Kakinada District, AP, India</span>
               </a>
             </div>
+
+            {/* VIP Member Perks — fills the remaining space */}
+            <div className="vip-perks-divider" />
+            <ul className="vip-perks-list">
+              <li><span className="vip-perk-icon">✦</span>Early access to limited collections &amp; drops</li>
+              <li><span className="vip-perk-icon">✦</span>Private runway invitations &amp; preview events</li>
+              <li><span className="vip-perk-icon">✦</span>Exclusive lookbooks delivered to your inbox</li>
+              <li><span className="vip-perk-icon">✦</span>Dedicated personal stylist on request</li>
+            </ul>
           </div>
         </div>
       </section>
@@ -994,9 +1005,9 @@ const LandingPage = () => {
         </div>
       </footer>
 
-      {/* VIP Circle Subscription Success Modal */}
-      {vipSuccessModalOpen && (
-        <div className="auth-modal-backdrop" onClick={() => { setVipSuccessModalOpen(false); setNewsletterSubscribed(false); }}>
+      {/* Private Circle Subscription Success Modal */}
+      {priveSuccessModalOpen && (
+        <div className="auth-modal-backdrop" onClick={() => { setPriveSuccessModalOpen(false); setNewsletterSubscribed(false); }}>
           <div className="auth-modal-card text-center" style={{ maxWidth: '460px', padding: '36px 28px' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(212,175,55,0.15)', border: '2px solid #D4AF37', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
               <Check size={34} color="#D4AF37" />
@@ -1010,7 +1021,7 @@ const LandingPage = () => {
 
             <div style={{ backgroundColor: '#0D0D11', borderRadius: '10px', padding: '16px 20px', textAlign: 'left', border: '1px solid rgba(212,175,55,0.25)', marginBottom: '24px' }}>
               <span style={{ fontSize: '11px', color: '#D4AF37', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '10px' }}>
-                Exclusive VIP Benefits Include:
+                Exclusive Member Benefits Include:
               </span>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', color: '#E4E4E7' }}>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1029,7 +1040,7 @@ const LandingPage = () => {
             </div>
 
             <button
-              onClick={() => { setVipSuccessModalOpen(false); setNewsletterSubscribed(false); }}
+              onClick={() => { setPriveSuccessModalOpen(false); setNewsletterSubscribed(false); }}
               className="btn-hero-primary"
               style={{ width: '100%', justifyContent: 'center', height: '48px' }}
             >

@@ -21,12 +21,22 @@ export const AuthProvider = ({ children }) => {
     const adminToken = localStorage.getItem('adminToken');
     const adminData = localStorage.getItem('adminUser');
 
-    if (userToken && userData) {
-      setUser(JSON.parse(userData));
+    if (userToken && userData && userData !== 'undefined') {
+      try {
+        setUser(JSON.parse(userData));
+      } catch (_) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('userToken');
+      }
     }
 
-    if (adminToken && adminData) {
-      setAdminUser(JSON.parse(adminData));
+    if (adminToken && adminData && adminData !== 'undefined') {
+      try {
+        setAdminUser(JSON.parse(adminData));
+      } catch (_) {
+        localStorage.removeItem('adminUser');
+        localStorage.removeItem('adminToken');
+      }
     }
 
     setLoading(false);
@@ -42,6 +52,14 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('adminToken', token);
     localStorage.setItem('adminUser', JSON.stringify(adminData));
     setAdminUser(adminData);
+  };
+
+  const updateAdminUser = (updatedData) => {
+    setAdminUser(prev => {
+      const next = { ...prev, ...updatedData };
+      localStorage.setItem('adminUser', JSON.stringify(next));
+      return next;
+    });
   };
 
   const logoutUser = () => {
@@ -61,6 +79,7 @@ export const AuthProvider = ({ children }) => {
     adminUser,
     loginUser,
     loginAdmin,
+    updateAdminUser,
     logoutUser,
     logoutAdmin,
     logout: logoutAdmin,

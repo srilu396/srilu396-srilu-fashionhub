@@ -57,12 +57,12 @@ const CustomersManagement = () => {
 
   const openCustomerDrawer = async (customer, tab = 'profile') => {
     setSelectedCustomer(customer);
+    setActivityData(null); // Immediately clear previous customer state to prevent stale data
+    setChatMessages([]);
     setActiveTab(tab);
     setDrawerOpen(true);
     fetchCustomerActivity(customer._id || customer.id);
-    if (tab === 'chat') {
-      fetchChatMessages(customer._id || customer.id);
-    }
+    fetchChatMessages(customer._id || customer.id);
   };
 
   const fetchCustomerActivity = async (customerId) => {
@@ -98,22 +98,35 @@ const CustomersManagement = () => {
     }
   };
 
+  const handleChatKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendChatMessage(e);
+    }
+  };
+
   const handleSendChatMessage = async (e) => {
-    e.preventDefault();
-    if (!chatInput.trim() || !selectedCustomer) return;
+    if (e) e.preventDefault();
+    if (!chatInput.trim() || !selectedCustomer || chatSending) return;
     const customerId = selectedCustomer._id || selectedCustomer.id;
     setChatSending(true);
+    const msgText = chatInput.trim();
+    setChatInput('');
     try {
       const data = await chatAPI.sendMessage({
         customerId,
         sender: 'admin',
-        senderName: 'VIP Concierge',
-        message: chatInput.trim()
+        senderName: 'Atelier Concierge',
+        message: msgText
       });
-      if (data.success && data.chatMessage) {
-        setChatMessages(prev => [...prev, data.chatMessage]);
-        setChatInput('');
-        toast.success('Message sent to client.', 'Concierge Response Sent');
+      const sentMsg = data.chatMessage || data.chatMsg;
+      if (data.success && sentMsg) {
+        setChatMessages(prev => [...prev, sentMsg]);
+        toast.success('Message sent to client.', 'Response Sent');
+      } else if (data.success) {
+        // Fallback: re-fetch to ensure message is visible
+        await fetchChatMessages(customerId);
+        toast.success('Message sent to client.', 'Response Sent');
       }
     } catch (err) {
       console.error('Error sending chat message:', err);
@@ -157,23 +170,47 @@ const CustomersManagement = () => {
     }
   };
 
+  const getCustomerAvatar = (row) => {
+    if (!row) return null;
+    if (row.avatarUrl) return row.avatarUrl;
+    try {
+      const localUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const localAvatar = localStorage.getItem('userProfileAvatar');
+      if (localAvatar && (row.email === localUser.email || row._id === localUser._id || row._id === localUser.id)) {
+        return localAvatar;
+      }
+    } catch (e) {}
+    return null;
+  };
+
   const columns = [
     {
       header: 'Customer Roster',
       accessor: (row) => `${row.firstName || ''} ${row.lastName || ''}`,
-      render: (row) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={styles.avatarCircle}>
-            {((row.firstName || row.username || 'C').charAt(0)).toUpperCase()}
+      render: (row) => {
+        const avatarSrc = getCustomerAvatar(row);
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={styles.avatarCircle}>
+              {avatarSrc ? (
+                <img
+                  src={avatarSrc}
+                  alt="avatar"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                />
+              ) : (
+                ((row.firstName || row.username || 'C').charAt(0)).toUpperCase()
+              )}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontWeight: '600', color: 'var(--admin-text-primary)' }}>
+                {row.firstName ? `${row.firstName} ${row.lastName || ''}` : row.username}
+              </span>
+              <span style={{ fontSize: '12px', color: 'var(--admin-text-secondary)' }}>{row.email}</span>
+            </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontWeight: '600', color: 'var(--admin-text-primary)' }}>
-              {row.firstName ? `${row.firstName} ${row.lastName || ''}` : row.username}
-            </span>
-            <span style={{ fontSize: '12px', color: 'var(--admin-text-secondary)' }}>{row.email}</span>
-          </div>
-        </div>
-      ),
+        );
+      },
       sortable: true
     },
     {
@@ -272,7 +309,15 @@ const CustomersManagement = () => {
             {/* Drawer Header Badge Card */}
             <div style={styles.profileHeaderCard}>
               <div style={styles.avatarLarge}>
-                {((selectedCustomer.firstName || selectedCustomer.username || 'C').charAt(0)).toUpperCase()}
+                {getCustomerAvatar(selectedCustomer) ? (
+                  <img
+                    src={getCustomerAvatar(selectedCustomer)}
+                    alt="avatar"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                  />
+                ) : (
+                  ((selectedCustomer.firstName || selectedCustomer.username || 'C').charAt(0)).toUpperCase()
+                )}
               </div>
               <div style={{ flex: 1 }}>
                 <h4 style={styles.profileName}>
@@ -412,7 +457,7 @@ const CustomersManagement = () => {
               <div style={styles.cardBox}>
                 <div style={styles.cardHeaderRow}>
                   <TicketPercent size={14} color="#D4AF37" />
-                  <span style={styles.cardHeader}>Assigned VIP Coupons</span>
+                  <span style={styles.cardHeader}>Assigned Discount Coupons</span>
                 </div>
                 <p style={{ color: '#A0A0AB', fontSize: '13px', margin: '0 0 12px 0' }}>Client is eligible for all storewide active promotional codes.</p>
                 <div style={styles.couponBadgeGrid}>
@@ -433,6 +478,40 @@ const CustomersManagement = () => {
             {/* Tab 4: Live Chat */}
             {activeTab === 'chat' && (
               <div style={styles.chatContainer}>
+                {/* Chat Header Bar */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderBottom: '1px solid var(--admin-border-subtle)', backgroundColor: 'var(--admin-surface-2)' }}>
+                  <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--admin-gold)' }}>Live Conversation Thread</span>
+                  {chatMessages.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const customerId = selectedCustomer._id || selectedCustomer.id;
+                          const res = await chatAPI.clearChat(customerId, 'admin');
+                          if (res.success) {
+                            toast.success('Chat cleared for Admin', 'Cleared');
+                            setChatMessages([]);
+                          }
+                        } catch (err) {
+                          console.error('Error clearing chat:', err);
+                        }
+                      }}
+                      style={{
+                        background: 'none',
+                        border: '1px solid var(--admin-border-gold)',
+                        borderRadius: '12px',
+                        padding: '3px 10px',
+                        color: 'var(--admin-gold)',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Clear Chat
+                    </button>
+                  )}
+                </div>
+
                 {/* Chat Message Window */}
                 <div style={styles.chatFeed}>
                   {chatMessages.length === 0 ? (
@@ -441,12 +520,13 @@ const CustomersManagement = () => {
                       <p style={{ margin: 0, color: '#A0A0AB', fontSize: '13px' }}>Start a live concierge discussion with {selectedCustomer.firstName || 'Client'}.</p>
                     </div>
                   ) : (
-                    chatMessages.map((msg, i) => {
+                    chatMessages.map((msg) => {
                       const isAdmin = msg.sender === 'admin';
+                      const msgId = msg._id || msg.id;
                       return (
-                        <div key={i} style={{ ...styles.chatBubbleWrap, justifyContent: isAdmin ? 'flex-end' : 'flex-start' }}>
+                        <div key={msgId} style={{ ...styles.chatBubbleWrap, justifyContent: isAdmin ? 'flex-end' : 'flex-start' }}>
                           <div style={{ ...styles.chatBubble, ...(isAdmin ? styles.chatBubbleAdmin : styles.chatBubbleClient) }}>
-                            <div style={styles.chatSender}>{isAdmin ? 'VIP Concierge' : (selectedCustomer.firstName || 'Customer')}</div>
+                            <div style={styles.chatSender}>{isAdmin ? 'Concierge Support' : (selectedCustomer.firstName || 'Customer')}</div>
                             <div style={styles.chatText}>{msg.message}</div>
                             <div style={styles.chatMeta}>
                               <span>{new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -465,7 +545,8 @@ const CustomersManagement = () => {
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Type concierge reply..."
+                    onKeyDown={handleChatKeyDown}
+                    placeholder="Type concierge reply (Press Enter to send)..."
                     style={styles.chatInputField}
                   />
                   <button type="submit" disabled={chatSending || !chatInput.trim()} style={styles.chatSendBtn}>
@@ -493,7 +574,8 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     fontWeight: '700',
-    fontSize: '14px'
+    fontSize: '14px',
+    overflow: 'hidden',
   },
   profileHeaderCard: {
     padding: '16px',
@@ -515,7 +597,8 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     fontWeight: '700',
-    fontSize: '18px'
+    fontSize: '18px',
+    overflow: 'hidden',
   },
   profileName: {
     margin: 0,

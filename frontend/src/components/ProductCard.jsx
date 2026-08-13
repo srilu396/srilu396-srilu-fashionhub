@@ -24,7 +24,11 @@ const ProductCard = ({ product }) => {
   const isWishlisted = Array.isArray(wishlistItems) && wishlistItems.some(item => (item._id || item.id) === id);
 
   const price = Number(product.price || 0);
-  const originalPrice = (price * 1.25).toFixed(0);
+  const rawOriginal = Number(product.originalPrice || 0);
+  const originalPrice = rawOriginal > price ? rawOriginal : null;
+  const discountPct = product.discount > 0 
+    ? Math.round(product.discount) 
+    : (originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0);
 
   const handleAddToCart = (e) => {
     e.preventDefault();
@@ -45,7 +49,7 @@ const ProductCard = ({ product }) => {
       image: mainImage,
       category: product.category || "Women's",
       stock: product.stock || 10,
-      rating: product.rating || 4.8
+      rating: product.rating || 4.5
     };
 
     dispatch(addToCart({ product: cartProduct, quantity: 1 }))
@@ -75,7 +79,7 @@ const ProductCard = ({ product }) => {
         price: price,
         image: mainImage,
         category: product.category || "Women's",
-        rating: product.rating || 4.8
+        rating: product.rating || 4.5
       };
       dispatch(addToWishlist(wishlistProduct));
       toast.success(`"${product.name}" added to wishlist!`, 'Wishlist Saved');
@@ -94,13 +98,23 @@ const ProductCard = ({ product }) => {
               e.target.src = 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&auto=format&fit=crop&q=80';
             }}
           />
-          <span className="product-card-badge">-20%</span>
+          {discountPct > 0 && (
+            <span className="product-card-badge">-{discountPct}%</span>
+          )}
           <button
             className={`product-card-wishlist ${isWishlisted ? 'active' : ''}`}
             onClick={handleWishlist}
             aria-label="Toggle wishlist"
+            title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+            style={isWishlisted ? { opacity: 1 } : {}}
           >
-            <Heart size={15} className={isWishlisted ? 'fill-pink text-pink' : ''} />
+            <Heart 
+              size={15} 
+              style={{ 
+                fill: isWishlisted ? '#C0392B' : 'none', 
+                color: isWishlisted ? '#C0392B' : '#7A6F68' 
+              }} 
+            />
           </button>
         </div>
       </Link>
@@ -110,21 +124,25 @@ const ProductCard = ({ product }) => {
           {product.name}
         </Link>
 
-        <div className="product-card-stars">
-          {[...Array(5)].map((_, i) => (
-            <Star
-              key={i}
-              size={14}
-              className={i < Math.floor(product.rating || 4.5) ? 'star-filled' : 'star-empty'}
-            />
-          ))}
-          <span className="product-card-rating-text">({product.rating || 4.8})</span>
-        </div>
+        {product.rating !== undefined && product.rating !== null && (
+          <div className="product-card-stars">
+            {[...Array(5)].map((_, i) => (
+              <Star
+                key={i}
+                size={14}
+                className={i < Math.floor(product.rating) ? 'star-filled' : 'star-empty'}
+              />
+            ))}
+            <span className="product-card-rating-text">({product.rating.toFixed(1)})</span>
+          </div>
+        )}
 
         <div className="product-card-footer">
           <div>
             <span className="product-card-price">₹{price.toLocaleString('en-IN')}</span>
-            <span className="product-card-price-old">₹{Number(originalPrice).toLocaleString('en-IN')}</span>
+            {originalPrice && (
+              <span className="product-card-price-old">₹{originalPrice.toLocaleString('en-IN')}</span>
+            )}
           </div>
           <button
             onClick={handleAddToCart}

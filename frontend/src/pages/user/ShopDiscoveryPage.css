@@ -1,0 +1,402 @@
+/* ═══════════════════════════════════════════════════════════════════
+   SRILU FASHIONHUB — ALL DEPARTMENTS SHOP DISCOVERY PAGE
+   Premium dark editorial catalogue with full-bleed department cards
+═══════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Sora:wght@300;400;500;600;700&display=swap');
+
+.shop-discovery-container {
+  min-height: 100vh;
+  background: #0E0B09;
+  color: #FAF4EC;
+  font-family: 'Sora', -apple-system, system-ui, sans-serif;
+}
+
+.shop-discovery-main {
+  max-width: 1340px;
+  margin: 0 auto;
+  padding: 28px 24px 100px;
+}
+
+/* ─── Breadcrumb ─────────────────────────────────────── */
+.shop-breadcrumb-wrap {
+  margin-bottom: 28px;
+}
+
+.shop-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: rgba(212, 175, 55, 0.6);
+}
+
+.shop-breadcrumb a {
+  color: rgba(212, 175, 55, 0.6);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.shop-breadcrumb a:hover {
+  color: #D4AF37;
+}
+
+.breadcrumb-sep { color: rgba(212, 175, 55, 0.3); }
+
+.breadcrumb-current {
+  color: #D4AF37;
+  font-weight: 600;
+}
+
+/* ─── Hero Header ────────────────────────────────────── */
+.shop-discovery-hero {
+  text-align: center;
+  margin-bottom: 52px;
+  padding: 52px 24px 48px;
+  background: linear-gradient(
+    135deg,
+    rgba(212, 175, 55, 0.07) 0%,
+    rgba(180, 100, 60, 0.05) 50%,
+    rgba(212, 175, 55, 0.03) 100%
+  );
+  border: 1px solid rgba(212, 175, 55, 0.16);
+  border-radius: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.shop-discovery-hero::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 500px;
+  height: 200px;
+  background: radial-gradient(ellipse, rgba(212, 175, 55, 0.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(212, 175, 55, 0.1);
+  color: #D4AF37;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  margin-bottom: 20px;
+}
+
+.hero-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 42px;
+  font-weight: 700;
+  color: #FAF4EC;
+  margin: 0 0 14px 0;
+  line-height: 1.2;
+}
+
+.hero-subtitle {
+  font-size: 15px;
+  color: rgba(250, 244, 236, 0.5);
+  max-width: 580px;
+  margin: 0 auto;
+  line-height: 1.65;
+}
+
+/* ─── Departments Grid ───────────────────────────────── */
+.shop-discovery-content {
+  /* inherits from parent */
+}
+
+.departments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 22px;
+}
+
+/* ─── Department Card ────────────────────────────────── */
+.dept-card {
+  background: #181210;
+  border: 1.5px solid rgba(212, 175, 55, 0.1);
+  border-radius: 20px;
+  overflow: hidden;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.35s ease;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  cursor: pointer;
+}
+
+.dept-card:hover {
+  transform: translateY(-7px);
+  box-shadow: 0 20px 50px rgba(212, 175, 55, 0.18);
+  border-color: rgba(212, 175, 55, 0.45);
+}
+
+/* Gold shimmer on top edge on hover */
+.dept-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(to right, transparent, rgba(212, 175, 55, 0.6), transparent);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  z-index: 5;
+  border-radius: 20px 20px 0 0;
+}
+
+.dept-card:hover::before {
+  opacity: 1;
+}
+
+/* Image zone */
+.dept-card-media {
+  position: relative;
+  height: 240px;
+  overflow: hidden;
+  background: #1A1210;
+}
+
+.dept-card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease, filter 0.5s ease;
+  filter: brightness(0.75) saturate(0.9);
+}
+
+.dept-card:hover .dept-card-media img {
+  transform: scale(1.06);
+  filter: brightness(0.6) saturate(1.05);
+}
+
+.dept-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(8, 6, 5, 0.7) 0%,
+    rgba(8, 6, 5, 0.18) 50%,
+    transparent 100%
+  );
+}
+
+/* Fallback (no image) */
+.dept-card-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: #D4AF37;
+  background: linear-gradient(135deg, #1A1210, #2A2018);
+}
+
+.dept-card-fallback span {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px;
+  color: rgba(250, 244, 236, 0.8);
+  font-weight: 600;
+}
+
+/* Info section below image */
+.dept-card-info {
+  padding: 22px 22px 24px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: #181210;
+}
+
+.dept-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  gap: 10px;
+}
+
+.dept-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #FAF4EC;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.dept-cat-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: #D4AF37;
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.dept-desc {
+  font-size: 13.5px;
+  color: rgba(250, 244, 236, 0.45);
+  margin: 0 0 20px 0;
+  line-height: 1.65;
+  flex: 1;
+}
+
+.btn-explore-dept {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(212,175,55,0.1), rgba(212,175,55,0.05));
+  color: #D4AF37;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  padding: 11px 22px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  letter-spacing: 0.02em;
+  width: 100%;
+}
+
+.btn-explore-dept:hover {
+  background: #D4AF37;
+  color: #0E0B09;
+  border-color: #D4AF37;
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
+}
+
+/* ─── Skeleton Loading ───────────────────────────────── */
+.dept-card-skeleton {
+  background: #181210;
+  border: 1.5px solid rgba(212, 175, 55, 0.07);
+  border-radius: 20px;
+  height: 400px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.dept-skeleton-img {
+  height: 240px;
+  background: linear-gradient(90deg, #1F1A14 25%, #2A2318 50%, #1F1A14 75%);
+  background-size: 400% 100%;
+  animation: skeletonShimmer 1.6s infinite ease-in-out;
+}
+
+.dept-skeleton-text {
+  height: 20px;
+  width: 55%;
+  margin: 22px 22px 10px;
+  background: linear-gradient(90deg, #1F1A14 25%, #2A2318 50%, #1F1A14 75%);
+  background-size: 400% 100%;
+  border-radius: 6px;
+  animation: skeletonShimmer 1.6s infinite ease-in-out;
+}
+
+.dept-skeleton-sub {
+  height: 14px;
+  width: 80%;
+  margin: 0 22px;
+  background: linear-gradient(90deg, #1F1A14 25%, #2A2318 50%, #1F1A14 75%);
+  background-size: 400% 100%;
+  border-radius: 4px;
+  animation: skeletonShimmer 1.6s infinite ease-in-out;
+}
+
+@keyframes skeletonShimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* ─── Empty / Error States ───────────────────────────── */
+.shop-empty-state,
+.shop-error-state {
+  text-align: center;
+  padding: 70px 20px;
+  background: #181210;
+  border: 1.5px solid rgba(212, 175, 55, 0.1);
+  border-radius: 20px;
+  max-width: 480px;
+  margin: 40px auto;
+}
+
+.shop-empty-state h3,
+.shop-error-state h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  color: #FAF4EC;
+  margin: 14px 0 8px;
+}
+
+.shop-empty-state p,
+.shop-error-state p {
+  color: rgba(250, 244, 236, 0.45);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 20px;
+}
+
+.empty-icon  { color: rgba(212, 175, 55, 0.55); }
+.error-icon  { color: #E05A3B; }
+
+.btn-home,
+.btn-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(212, 175, 55, 0.1);
+  color: #D4AF37;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  padding: 10px 26px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-top: 6px;
+}
+
+.btn-retry:hover,
+.btn-home:hover {
+  background: #D4AF37;
+  color: #0E0B09;
+  border-color: #D4AF37;
+}
+
+/* ─── Responsive ─────────────────────────────────────── */
+@media (max-width: 900px) {
+  .hero-title { font-size: 30px; }
+  .departments-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+}
+
+@media (max-width: 600px) {
+  .hero-title { font-size: 24px; }
+  .departments-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .dept-card-media { height: 160px; }
+  .dept-card-info { padding: 14px 16px 18px; }
+  .dept-name { font-size: 16px; }
+}
+
+@media (max-width: 420px) {
+  .departments-grid { grid-template-columns: 1fr; }
+}

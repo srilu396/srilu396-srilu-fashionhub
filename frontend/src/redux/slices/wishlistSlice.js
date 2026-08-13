@@ -185,7 +185,7 @@ const mockWishlistAPI = {
   }
 };
 
-// Async thunks that save to database with fallback
+// Async thunks that save to database
 export const fetchWishlist = createAsyncThunk(
   'wishlist/fetchWishlist',
   async (_, { rejectWithValue }) => {
@@ -202,26 +202,21 @@ export const fetchWishlist = createAsyncThunk(
               return product;
             } catch (error) {
               console.error(`Error fetching product ${productId}:`, error);
-              return {
-                _id: productId,
-                name: 'Unknown Product',
-                price: 0,
-                image: 'https://via.placeholder.com/300x400?text=No+Image',
-                description: 'Product not found'
-              };
+              return null;
             }
           })
         );
         
-        return { wishlist: fullProducts };
+        return { wishlist: fullProducts.filter(Boolean) };
       }
       
-      // If backend already returns full product data
-      if (response.wishlist && response.wishlist[0] && response.wishlist[0]._id) {
-        // Ensure images are properly formatted
+      // If backend returns product objects
+      if (response.wishlist && Array.isArray(response.wishlist)) {
         const wishlistWithImages = response.wishlist.map(item => ({
           ...item,
-          image: item.image || item.imageUrl || item.images?.[0] || 'https://via.placeholder.com/300x400?text=No+Image'
+          _id: item._id || item.id,
+          id: item.id || item._id,
+          image: item.image || item.imageUrl || item.images?.[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=500&auto=format&fit=crop&q=80'
         }));
         
         return { wishlist: wishlistWithImages };
@@ -229,14 +224,8 @@ export const fetchWishlist = createAsyncThunk(
       
       return response;
     } catch (error) {
-      console.error('Fetch wishlist error, using fallback:', error);
-      // Fallback to localStorage
-      try {
-        const fallback = await mockWishlistAPI.getWishlist();
-        return fallback;
-      } catch (fallbackError) {
-        return rejectWithValue(fallbackError.message);
-      }
+      console.error('Fetch wishlist error:', error);
+      return rejectWithValue(error.message || 'Unable to load your wishlist');
     }
   }
 );
@@ -252,17 +241,28 @@ export const addToWishlist = createAsyncThunk(
       
       const response = await wishlistAPI.addToWishlist(productId);
       
-      // If backend returns success, we need to fetch the updated wishlist
-      if (response.success) {
-        // Fetch the updated wishlist
-        const updatedWishlist = await fetchWishlist();
-        return updatedWishlist;
+      if (response.success && Array.isArray(response.wishlist)) {
+        let wishlist = response.wishlist;
+        if (wishlist.length > 0 && typeof wishlist[0] === 'string') {
+          const fullProducts = await Promise.all(
+            wishlist.map(async (id) => {
+              if (id === productId) return product;
+              return await getProductById(id);
+            })
+          );
+          wishlist = fullProducts.filter(Boolean);
+        }
+        const userId = getUserId();
+        if (userId && userId !== 'guest') {
+          localStorage.setItem(`userWishlist_${userId}`, JSON.stringify(wishlist));
+        }
+        return { wishlist };
       }
       
-      return response;
+      const fallback = await mockWishlistAPI.addToWishlist(product);
+      return fallback;
     } catch (error) {
       console.error('Add to wishlist error, using fallback:', error);
-      // Fallback to localStorage
       try {
         const fallback = await mockWishlistAPI.addToWishlist(product);
         return fallback;
@@ -279,20 +279,28 @@ export const removeFromWishlist = createAsyncThunk(
     try {
       const response = await wishlistAPI.removeFromWishlist(productId);
       
-      // If backend returns success, we need to fetch the updated wishlist
-      if (response.success) {
-        // Fetch the updated wishlist
-        const updatedWishlist = await fetchWishlist();
-        return updatedWishlist;
+      if (response.success && Array.isArray(response.wishlist)) {
+        let wishlist = response.wishlist;
+        if (wishlist.length > 0 && typeof wishlist[0] === 'string') {
+          const fullProducts = await Promise.all(
+            wishlist.map(async (id) => await getProductById(id))
+          );
+          wishlist = fullProducts.filter(Boolean);
+        }
+        const userId = getUserId();
+        if (userId && userId !== 'guest') {
+          localStorage.setItem(`userWishlist_${userId}`, JSON.stringify(wishlist));
+        }
+        return { wishlist, productId };
       }
       
-      return response;
+      const fallback = await mockWishlistAPI.removeFromWishlist(productId);
+      return { ...fallback, productId };
     } catch (error) {
       console.error('Remove from wishlist error, using fallback:', error);
-      // Fallback to localStorage
       try {
         const fallback = await mockWishlistAPI.removeFromWishlist(productId);
-        return fallback;
+        return { ...fallback, productId };
       } catch (fallbackError) {
         return rejectWithValue(fallbackError.message);
       }
@@ -308,7 +316,6 @@ export const clearWishlist = createAsyncThunk(
       return response;
     } catch (error) {
       console.error('Clear wishlist error, using fallback:', error);
-      // Fallback to localStorage
       try {
         const fallback = await mockWishlistAPI.clearWishlist();
         return fallback;
@@ -319,8 +326,18 @@ export const clearWishlist = createAsyncThunk(
   }
 );
 
+const getInitialWishlistItems = () => {
+  try {
+    const userId = getUserId();
+    const wishlistKey = `userWishlist_${userId}`;
+    return JSON.parse(localStorage.getItem(wishlistKey) || '[]') || [];
+  } catch (_) {
+    return [];
+  }
+};
+
 const initialState = {
-  items: [],
+  items: getInitialWishlistItems(),
   loading: false,
   error: null,
 };
@@ -344,7 +361,6 @@ const wishlistSlice = createSlice({
       try {
         const wishlistKey = `userWishlist_${userId}`;
         const wishlist = JSON.parse(localStorage.getItem(wishlistKey) || '[]');
-        // Ensure images are properly formatted
         state.items = wishlist.map(item => ({
           ...item,
           image: item.image || item.imageUrl || 'https://via.placeholder.com/300x400?text=No+Image'
@@ -373,9 +389,10 @@ const wishlistSlice = createSlice({
       })
       .addCase(fetchWishlist.fulfilled, (state, action) => {
         state.loading = false;
-        // Ensure all items have proper images
         state.items = (action.payload.wishlist || []).map(item => ({
           ...item,
+          _id: item._id || item.id,
+          id: item.id || item._id,
           image: item.image || item.imageUrl || item.images?.[0] || 'https://via.placeholder.com/300x400?text=No+Image'
         }));
         console.log('📦 Wishlist updated from backend:', state.items.length, 'items');
@@ -385,33 +402,50 @@ const wishlistSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(addToWishlist.pending, (state) => {
-        state.loading = true;
         state.error = null;
       })
       .addCase(addToWishlist.fulfilled, (state, action) => {
         state.loading = false;
-        // Ensure all items have proper images
-        state.items = (action.payload.wishlist || []).map(item => ({
-          ...item,
-          image: item.image || item.imageUrl || item.images?.[0] || 'https://via.placeholder.com/300x400?text=No+Image'
-        }));
-        console.log('✅ After adding to backend wishlist:', state.items.length, 'items');
+        if (action.payload && Array.isArray(action.payload.wishlist)) {
+          state.items = action.payload.wishlist.map(item => ({
+            ...item,
+            _id: item._id || item.id,
+            id: item.id || item._id,
+            image: item.image || item.imageUrl || item.images?.[0] || 'https://via.placeholder.com/300x400?text=No+Image'
+          }));
+        }
       })
       .addCase(addToWishlist.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-      .addCase(removeFromWishlist.pending, (state) => {
-        state.loading = true;
+      .addCase(removeFromWishlist.pending, (state, action) => {
+        const productId = action.meta.arg;
+        state.items = state.items.filter(item => {
+          const id = typeof item === 'object' ? (item._id || item.id) : item;
+          return id !== productId;
+        });
         state.error = null;
       })
       .addCase(removeFromWishlist.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload.wishlist || [];
+        if (action.payload && Array.isArray(action.payload.wishlist)) {
+          state.items = action.payload.wishlist.map(item => ({
+            ...item,
+            _id: item._id || item.id,
+            id: item.id || item._id,
+            image: item.image || item.imageUrl || item.images?.[0] || 'https://via.placeholder.com/300x400?text=No+Image'
+          }));
+        }
       })
       .addCase(removeFromWishlist.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        const userId = getUserId();
+        try {
+          const wishlist = JSON.parse(localStorage.getItem(`userWishlist_${userId}`) || '[]');
+          state.items = wishlist;
+        } catch (_) {}
       })
       .addCase(clearWishlist.pending, (state) => {
         state.loading = true;

@@ -147,6 +147,92 @@ const MessagesManagement = () => {
 
 
 
+  // Reply state
+  const [adminReplyText, setAdminReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
+  const adminMessagesEndRef = useRef(null);
+
+  const scrollToAdminBottom = () => {
+    setTimeout(() => {
+      adminMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 50);
+  };
+
+  useEffect(() => {
+    if (modalOpen && selectedThread) {
+      scrollToAdminBottom();
+    }
+  }, [modalOpen, selectedThread]);
+
+  const handleOpenThread = async (thread) => {
+    setSelectedThread(thread);
+    setModalOpen(true);
+
+    // Mark as read for admin
+    try {
+      const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+      const cId = thread.id;
+      await fetch(`${API_BASE}/api/chat/read/${cId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reader: 'admin' })
+      });
+    } catch (err) {
+      console.error('Error marking thread read by admin:', err);
+    }
+  };
+
+  const handleAdminReplyKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendAdminReply(e);
+    }
+  };
+
+  const handleSendAdminReply = async (e) => {
+    if (e) e.preventDefault();
+    if (!adminReplyText.trim() || !selectedThread || sendingReply) return;
+
+    setSendingReply(true);
+    const replyText = adminReplyText.trim();
+    setAdminReplyText('');
+
+    try {
+      const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+      const cId = selectedThread.id;
+      const res = await fetch(`${API_BASE}/api/chat/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: cId,
+          sender: 'admin',
+          senderName: 'Atelier Concierge',
+          message: replyText
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Reply sent to ${selectedThread.latestName}`, 'Message Sent');
+        // Fetch updated messages for thread
+        const msgRes = await fetch(`${API_BASE}/api/chat/messages/${cId}`);
+        const msgData = await msgRes.json();
+        if (msgData.success && Array.isArray(msgData.messages)) {
+          setSelectedThread(prev => ({
+            ...prev,
+            chronologicalMessages: msgData.messages,
+            totalMessages: msgData.messages.length
+          }));
+          scrollToAdminBottom();
+        }
+      }
+    } catch (err) {
+      console.error('Error sending admin reply:', err);
+      toast.error('Failed to send reply');
+    } finally {
+      setSendingReply(false);
+    }
+  };
+
   const columns = [
     {
       header: 'Customer',
@@ -160,12 +246,12 @@ const MessagesManagement = () => {
       sortable: true
     },
     {
-      header: 'Thread Activity',
+      header: 'Activity & Messages',
       accessor: 'totalMessages',
       render: (row) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{
-            padding: '3px 8px',
+            padding: '4px 8px',
             backgroundColor: 'var(--admin-gold-muted)',
             border: '1px solid var(--admin-border-gold)',
             borderRadius: '12px',
@@ -212,7 +298,28 @@ const MessagesManagement = () => {
             {
               label: 'View Conversation',
               icon: <Eye size={14} color="var(--admin-gold)" />,
-              onClick: () => { setSelectedThread(row); setModalOpen(true); }
+              onClick: () => handleOpenThread(row)
+            },
+            {
+              label: 'Clear Conversation',
+              icon: <Trash2 size={14} color="var(--admin-gold)" />,
+              onClick: async () => {
+                try {
+                  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+                  const res = await fetch(`${API_BASE}/api/chat/clear/${row.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ requester: 'admin' })
+                  });
+                  const data = await res.json();
+                  if (data.success) {
+                    toast.success('Conversation thread cleared for Admin', 'Cleared');
+                    await fetchMessages();
+                  }
+                } catch (err) {
+                  console.error('Error clearing conversation:', err);
+                }
+              }
             },
             {
               label: 'Delete Conversation',
@@ -263,10 +370,47 @@ const MessagesManagement = () => {
                   <span style={styles.modalEmail}>{selectedThread.email}</span>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={styles.countBadge}>
                   {selectedThread.totalMessages} {selectedThread.totalMessages === 1 ? 'Message' : 'Messages'}
                 </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+                      const cId = selectedThread.id;
+                      const res = await fetch(`${API_BASE}/api/chat/clear/${cId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ requester: 'admin' })
+                      });
+                      const data = await res.json();
+                      if (data.success) {
+                        toast.success('Conversation thread cleared for Admin', 'Cleared');
+                        setModalOpen(false);
+                        await fetchMessages();
+                      }
+                    } catch (err) {
+                      console.error('Error clearing conversation:', err);
+                    }
+                  }}
+                  style={{
+                    padding: '4px 10px',
+                    backgroundColor: 'transparent',
+                    border: '1px solid var(--admin-border-gold)',
+                    borderRadius: '12px',
+                    color: 'var(--admin-gold)',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Trash2 size={12} /> Clear Chat
+                </button>
                 <button onClick={() => setModalOpen(false)} style={styles.modalClose}>×</button>
               </div>
             </div>
@@ -320,10 +464,47 @@ const MessagesManagement = () => {
                     <p style={styles.msgText}>{msg.message}</p>
                   </div>
                 ))}
+                <div ref={adminMessagesEndRef} />
               </div>
 
-              {/* Modal Footer Actions (Fixed at bottom) */}
+              {/* Modal Footer Reply Box & Actions */}
               <div style={styles.modalFooter}>
+                <form onSubmit={handleSendAdminReply} style={{ display: 'flex', gap: '8px', width: '100%', marginBottom: '10px' }}>
+                  <input
+                    type="text"
+                    placeholder="Type a reply..."
+                    value={adminReplyText}
+                    onChange={(e) => setAdminReplyText(e.target.value)}
+                    onKeyDown={handleAdminReplyKeyDown}
+                    style={{
+                      flex: 1,
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      backgroundColor: 'var(--admin-bg-dark)',
+                      border: '1px solid var(--admin-border-gold)',
+                      color: 'var(--admin-text-primary)',
+                      fontSize: '12.5px',
+                      outline: 'none'
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={sendingReply || !adminReplyText.trim()}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      backgroundColor: 'var(--admin-gold)',
+                      color: '#1A1412',
+                      border: 'none',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {sendingReply ? 'Sending...' : 'Send Reply'}
+                  </button>
+                </form>
+
                 <button
                   type="button"
                   onClick={() => {
@@ -358,18 +539,19 @@ const MessagesManagement = () => {
 
       <style>{`
         .custom-gold-scrollbar::-webkit-scrollbar {
-          width: 5px;
+          width: 6px;
         }
         .custom-gold-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.03);
+          background: rgba(255, 255, 255, 0.05);
           border-radius: 4px;
         }
         .custom-gold-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(212, 175, 55, 0.35);
+          background: #FFFFFF;
           border-radius: 4px;
+          box-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
         }
         .custom-gold-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(212, 175, 55, 0.6);
+          background: #F0F0F0;
         }
       `}</style>
     </AdminLayout>

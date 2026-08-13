@@ -36,19 +36,25 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
-    default: 'pending'
+    enum: ['pending', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled'],
+    default: 'processing'
   },
   paymentMethod: {
     type: String,
-    enum: ['credit_card', 'paypal', 'cash_on_delivery'],
-    default: 'credit_card'
+    enum: ['cash_on_delivery', 'demo_online', 'demo_upi', 'demo_card', 'credit_card', 'paypal'],
+    default: 'cash_on_delivery'
   },
   paymentStatus: {
     type: String,
-    enum: ['pending', 'completed', 'failed', 'refunded'],
+    enum: ['pending', 'successful', 'failed', 'refunded'],
     default: 'pending'
   },
+  transactionId: String,
+  subtotal: Number,
+  finalAmount: Number,
+  tax: Number,
+  discount: Number,
+  coupon: mongoose.Schema.Types.Mixed,
   trackingNumber: String,
   estimatedDelivery: Date,
   deliveredAt: Date,
