@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const http = require('http'); 
 const WebSocket = require('ws'); 
 const path = require('path');
+const fs = require('fs');
 const adminRoutes = require('./routes/admin');
 require('dotenv').config();
 
@@ -25,8 +26,25 @@ const wss = new WebSocket.Server({
 });
 
 // ===== Middleware =====
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  'http://localhost:3000',
+  'http://localhost:5000',
+  'http://localhost:5001'
+].filter(Boolean);
+
 app.use(cors({
-  origin: true,
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (
+      allowedOrigins.includes(origin) ||
+      origin.endsWith('.vercel.app') ||
+      origin.endsWith('.onrender.com')
+    ) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -292,14 +310,15 @@ app.post('/api/test/broadcast', (req, res) => {
   res.json({ success: true, message: 'Test broadcast sent', activity: testActivity, clientsCount: connectedClients.size });
 });
 
-// ===== Serve Static Assets in Production =====
+// ===== Serve Static Assets in Production (Monorepo deployment fallback) =====
 const buildPath = path.join(__dirname, '../frontend/build');
-app.use(express.static(buildPath));
-
-// Catch-all route to serve React app index.html for frontend client-side routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(buildPath, 'index.html'));
-});
+if (fs.existsSync(buildPath)) {
+  app.use(express.static(buildPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/ws')) return next();
+    res.sendFile(path.join(buildPath, 'index.html'));
+  });
+}
 
 // ===== Error Handling =====
 app.use((err, req, res, next) => {

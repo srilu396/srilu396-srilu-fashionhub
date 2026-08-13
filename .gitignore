@@ -3,3 +3,8 @@ graphify-out/
 .agents/
 node_modules/
 E-commerce-website
+
+# Environment files
+.env
+.env.*
+!.env.example
