@@ -36,7 +36,7 @@ const HERO_SLIDES = [
     subtitle: 'Discover timeless couture, modern Indian heritage & bespoke silhouettes for women and men.'
   },
   {
-    image: '/image.png',
+    image: 'https://res.cloudinary.com/qx83ppc6/image/upload/f_auto,q_auto/image',
     category: 'GENTLEMEN’S ATELIER',
     title: 'REFINED TAILORING & ROYAL ETHNIC SILHOUETTES',
     subtitle: 'Impeccably cut tuxedos, handcrafted sherwanis and elevated contemporary menswear.'
@@ -48,7 +48,7 @@ const HERO_SLIDES = [
     subtitle: 'Bespoke silk sarees, embroidered lehengas and regal occasionwear.'
   },
   {
-    image: '/imge_1.png',
+    image: 'https://pbs.twimg.com/media/F-mEeZsboAAOnCB.jpg',
     category: 'ARTISANAL ACCESSORIES',
     title: 'HANDMADE LEATHERWARE & FINE JEWELRY',
     subtitle: 'Exquisite finishing touches designed to complete your signature statement.'
